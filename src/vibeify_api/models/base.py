@@ -1,37 +1,43 @@
-"""Base model classes."""
+"""Base model classes using SQLModel."""
 from datetime import datetime
-from typing import Any
+from typing import Optional
 
-from sqlalchemy import DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
-
-from vibeify_api.core.database import Base
+from sqlalchemy import Column, DateTime, func
+from sqlmodel import SQLModel, Field
 
 
-class TimestampMixin:
+class TimestampMixin(SQLModel):
     """Mixin to add created_at and updated_at timestamp fields."""
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            nullable=False,
+        ),
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            nullable=False,
+        ),
     )
 
 
-class BaseModel(Base, TimestampMixin):
-    """Base model with common fields and methods."""
+class BaseModel(SQLModel, TimestampMixin):
+    """Base model with common fields and methods.
+    
+    Use table=True to create a database table, table=False for API schemas.
+    """
 
-    __abstract__ = True
+    # Note: SQLModel models with table=True become database tables
+    # Models without table=True become Pydantic schemas for API validation
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert model instance to dictionary."""
-        return {
-            column.key: getattr(self, column.key)
-            for column in self.__table__.columns
-        }
+
+class VibeifyModel(BaseModel, table=False):
+    """Base model for API schemas (non-table models)."""
+    pass

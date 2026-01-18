@@ -2,7 +2,7 @@
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base
+from sqlmodel import SQLModel
 
 from vibeify_api.core.config import get_settings
 
@@ -24,8 +24,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-# Base class for models
-Base = declarative_base()
+# Base class for models - SQLModel provides its own Base
+# SQLModel's metadata is compatible with SQLAlchemy for Alembic
+Base = SQLModel
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -48,8 +49,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Initialize database tables."""
+    # SQLModel uses SQLAlchemy's metadata system
+    # Import all models before calling this to register them
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
 async def close_db() -> None:
