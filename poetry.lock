@@ -191,7 +191,6 @@ description = "Lightweight in-process concurrent programming"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\""
 files = [
     {file = "greenlet-3.3.0-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:6f8496d434d5cb2dce025773ba5597f71f5410ae499d5dd9533e0653258cdb3d"},
     {file = "greenlet-3.3.0-cp310-cp310-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b96dc7eef78fd404e022e165ec55327f935b9b52ff355b067eb4a0267fc1cffb"},
@@ -743,6 +742,29 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "querymate"
+version = "0.6.9"
+description = "A structured query builder for FastAPI and SQLModel"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+files = [
+    {file = "querymate-0.6.9-py3-none-any.whl", hash = "sha256:00d8c93cabba841d6d705d71e45300ec0dc619066b82d51042e10018e0cea048"},
+    {file = "querymate-0.6.9.tar.gz", hash = "sha256:937bb687d7ce184a99211b207bbc7b1444642d0fdc15055ade78ad797b77cee3"},
+]
+
+[package.dependencies]
+fastapi = ">=0.109.0"
+greenlet = ">=3.0.0"
+pydantic = ">=2.6.0"
+pydantic-settings = ">=2.1.0"
+sqlalchemy = ">=2.0.0"
+sqlmodel = ">=0.0.14"
+
+[package.extras]
+dev = ["aiosqlite (>=0.2.0)", "black (>=24.1.0)", "build (>=0.11.0)", "furo (>=2024.0.0)", "httpx (>=0.27.0)", "ipdb (>=0.13.13)", "isort (>=5.13.0)", "mypy (>=1.8.0)", "myst-parser (>=2.0.0)", "packaging (>=24.0)", "pytest (>=8.0.0)", "pytest-asyncio (>=0.26.0)", "pytest-cov (>=4.1.0)", "ruff (>=0.2.0)", "sphinx (>=7.2.0)", "sphinx-autodoc-typehints (>=1.25.0)", "sphinx-copybutton (>=0.5.0)", "sphinx-design (>=0.5.0)", "sphinx-rtd-theme (>=2.0.0)", "toml (>=0.10.2)", "twine (>=5.0.0)"]
+
+[[package]]
 name = "ruff"
 version = "0.14.13"
 description = "An extremely fast Python linter and code formatter, written in Rust."
@@ -946,4 +968,4 @@ standard = ["colorama (>=0.4) ; sys_platform == \"win32\"", "httptools (>=0.6.3)
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "de43823de2c564a5159f23b5635c0062190a205d2311ae91b91281ed06f667da"
+content-hash = "de33d51b2b5b836ed2454a66f3d24ea07309f2322a332dde33842f4ac58e3c09"

@@ -12,9 +12,7 @@ from sqlmodel import SQLModel
 
 # Import all models to ensure they are registered with Base.metadata
 # This is necessary for autogenerate to detect model changes
-# TODO: Import your models here as you create them
-# Example: from vibeify_api.models.user import User
-# Example: from vibeify_api.models.item import Item
+from vibeify_api.models.user import User  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
