@@ -23,9 +23,10 @@ class DocumentService(BaseService[Document]):
         super().__init__(Document)
         self.s3_repo = S3Repository()
 
-    async def create_upload(
+    async def upload_file(
         self,
-        file: UploadFile
+        file: UploadFile,
+        presigned: bool = True
     ) -> DocumentUploadResponse:
         """Creates a document record from the input file buffer and generates a
         presigned upload URL for upload.
@@ -35,6 +36,7 @@ class DocumentService(BaseService[Document]):
 
         Returns:
             Dictionary with document record and presigned upload URL
+            :param presigned:
         """
         user: User = self.require_current_user()
         user_id = user.id
@@ -56,8 +58,13 @@ class DocumentService(BaseService[Document]):
                 uploaded_by_id=user_id,
             )
         )
-        
-        upload_url = await self.s3_repo.generate_presigned_url(s3_key, operation="put_object")
+
+        upload_url = None
+
+        if presigned:
+            upload_url = await self.s3_repo.generate_presigned_url(s3_key, operation="put_object")
+        else:
+            await self.s3_repo.upload_file(s3_key, file.file)
 
         return DocumentUploadResponse(
             document=DocumentResponse.model_validate(document),

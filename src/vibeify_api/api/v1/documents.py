@@ -59,7 +59,7 @@ async def create_upload(
             "s3_key": "2026/01/18/1/uuid-example.pdf"
         }
     """
-    return await service.create_upload(file)
+    return await service.upload_file(file)
 
 
 @router.get(
