@@ -1,5 +1,6 @@
 """User service for business logic."""
 from datetime import timedelta
+from typing import List, Optional
 
 from fastapi import HTTPException, status
 from querymate import Querymate
@@ -18,15 +19,17 @@ class UserService(BaseService[User]):
         super().__init__(User)
 
     async def login_user(self, user_data: UserLogin) -> Token:
-        user = await self.query(
-            Querymate(filter={"email": {"eq": user_data.email}})
+        users = await self.query_raw(
+            Querymate(filter={"email": {"eq": user_data.email}}, limit=1),
         )
-        if not user:
+        if len(users) == 0:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        else:
+            user = users[0]
 
         # Verify password
         if not user.hashed_password or not verify_password(user_data.password, user.hashed_password):
