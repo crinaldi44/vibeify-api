@@ -9,7 +9,7 @@ from vibeify_api.models.user import User
 from vibeify_api.services.base import BaseService
 
 
-class UserService(BaseService[User, int]):
+class UserService(BaseService[User]):
     """Service for user-related business logic."""
 
     def __init__(self, session: AsyncSession):

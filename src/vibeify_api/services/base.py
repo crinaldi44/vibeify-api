@@ -8,10 +8,9 @@ from sqlmodel import SQLModel
 from vibeify_api.repository.base import BaseRepository
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
-IDType = TypeVar("IDType", int, str)
 
 
-class BaseService(Generic[ModelType, IDType]):
+class BaseService(Generic[ModelType]):
     """Generic base service for business logic operations.
 
     Combines repository layer with QueryMate for flexible querying.
@@ -28,7 +27,7 @@ class BaseService(Generic[ModelType, IDType]):
         self.repository = BaseRepository(model, session)
         self.session = session
 
-    async def get(self, id: IDType) -> Optional[ModelType]:
+    async def get(self, id: int) -> Optional[ModelType]:
         """Get a single record by ID.
 
         Args:
@@ -68,7 +67,7 @@ class BaseService(Generic[ModelType, IDType]):
 
     async def update(
         self,
-        id: IDType,
+        id: int,
         obj_in: ModelType | dict[str, Any],
     ) -> Optional[ModelType]:
         """Update a record by ID.
@@ -82,7 +81,7 @@ class BaseService(Generic[ModelType, IDType]):
         """
         return await self.repository.update(id, obj_in)
 
-    async def delete(self, id: IDType) -> bool:
+    async def delete(self, id: int) -> bool:
         """Delete a record by ID.
 
         Args:
@@ -93,7 +92,7 @@ class BaseService(Generic[ModelType, IDType]):
         """
         return await self.repository.delete(id)
 
-    async def exists(self, id: IDType) -> bool:
+    async def exists(self, id: int) -> bool:
         """Check if a record exists by ID.
 
         Args:

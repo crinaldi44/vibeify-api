@@ -1,16 +1,14 @@
 """Base repository for database operations."""
 from typing import Generic, TypeVar, Optional, Type, Any
-from uuid import UUID
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
-IDType = TypeVar("IDType", int, UUID, str)
 
 
-class BaseRepository(Generic[ModelType, IDType]):
+class BaseRepository(Generic[ModelType]):
     """Generic repository base class for database operations.
 
     Provides common CRUD operations that can be extended by specific repositories.
@@ -26,7 +24,7 @@ class BaseRepository(Generic[ModelType, IDType]):
         self.model = model
         self.session = session
 
-    async def get(self, id: IDType) -> Optional[ModelType]:
+    async def get(self, id: int) -> Optional[ModelType]:
         """Get a single record by ID.
 
         Args:
@@ -78,7 +76,7 @@ class BaseRepository(Generic[ModelType, IDType]):
 
     async def update(
         self,
-        id: IDType,
+        id: int,
         obj_in: ModelType | dict[str, Any],
     ) -> Optional[ModelType]:
         """Update a record by ID.
@@ -104,7 +102,7 @@ class BaseRepository(Generic[ModelType, IDType]):
         await self.session.refresh(db_obj)
         return db_obj
 
-    async def delete(self, id: IDType) -> bool:
+    async def delete(self, id: int) -> bool:
         """Delete a record by ID.
 
         Args:
@@ -121,7 +119,7 @@ class BaseRepository(Generic[ModelType, IDType]):
         await self.session.commit()
         return True
 
-    async def exists(self, id: IDType) -> bool:
+    async def exists(self, id: int) -> bool:
         """Check if a record exists by ID.
 
         Args:
