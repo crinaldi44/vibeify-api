@@ -4,31 +4,31 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
-# Set environment variables
+# Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    POETRY_NO_INTERACTION=1 \
+    PYTHONPATH=/app/src \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_CACHE_DIR=/tmp/poetry_cache
 
-# Install system dependencies
+# System dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install poetry==1.8.3
+RUN pip install poetry==2.3.0
 
-# Configure Poetry to not create virtual environment (we're in Docker)
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VENV_IN_PROJECT=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
-# Copy Poetry files
+# Copy Poetry files first (better layer caching)
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-RUN poetry install --no-dev && rm -rf $POETRY_CACHE_DIR
+# Install dependencies (no venv, no root package install)
+RUN poetry install --only main --no-root --no-ansi \
+ && rm -rf $POETRY_CACHE_DIR
 
 # Copy application code
 COPY . .
@@ -36,5 +36,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["poetry", "run", "uvicorn", "vibeify_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run API (Celery containers override this command)
+CMD ["uvicorn", "vibeify_api.main:app", "--host", "0.0.0.0", "--port", "8000"]

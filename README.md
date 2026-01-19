@@ -10,11 +10,14 @@ A modern FastAPI application with async SQLAlchemy and PostgreSQL database suppo
 - ⚙️ **Pydantic Settings** - Environment-based configuration
 - 🔄 **Async/Await** - Full async support throughout the stack
 - 📝 **OpenAPI/Swagger** - Automatic API documentation
+- 🔄 **Celery** - Distributed task queue for background jobs
+- 📊 **Redis** - Message broker and result backend for Celery
 
 ## Requirements
 
 - Python >= 3.12
 - PostgreSQL >= 12
+- Redis >= 7 (for Celery)
 - Poetry (for dependency management)
 
 ## Installation
@@ -57,6 +60,12 @@ A modern FastAPI application with async SQLAlchemy and PostgreSQL database suppo
 
    # CORS Settings (comma-separated)
    # CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+   
+   # Redis/Celery Settings
+   REDIS_URL=redis://localhost:6379/0
+   # Optional: Override broker and backend separately
+   # CELERY_BROKER_URL=redis://localhost:6379/0
+   # CELERY_RESULT_BACKEND=redis://localhost:6379/0
    ```
 
 4. **Set up the database**
@@ -85,6 +94,160 @@ The API will be available at:
 - **API**: http://localhost:8000
 - **Interactive API Docs (Swagger)**: http://localhost:8000/docs
 - **Alternative API Docs (ReDoc)**: http://localhost:8000/redoc
+
+### Running with Docker Compose
+
+Start all services (database, Redis, API, Celery workers):
+```bash
+docker-compose up -d
+```
+
+Start specific services:
+```bash
+# Start only database and Redis
+docker-compose up -d db redis
+
+# Start Celery worker
+docker-compose up -d celery
+
+# Start Celery beat (for scheduled tasks)
+docker-compose up -d celery-beat
+```
+
+View logs:
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f celery
+```
+
+## Celery Background Tasks
+
+This project includes Celery for running background tasks and scheduled jobs.
+
+### Running Celery Worker
+
+In development:
+```bash
+poetry run celery -A vibeify_api.core.celery_app worker --loglevel=info
+```
+
+With Docker:
+```bash
+docker-compose up celery
+```
+
+### Running Celery Beat (Scheduled Tasks)
+
+For periodic/scheduled tasks:
+```bash
+poetry run celery -A vibeify_api.core.celery_app beat --loglevel=info
+```
+
+With Docker:
+```bash
+docker-compose up celery-beat
+```
+
+### Example: Creating a Scheduled Task
+
+Here's an example of how to create a nightly report task:
+
+**1. Create a task file** (`src/vibeify_api/tasks/reports.py`):
+```python
+from datetime import datetime
+from typing import List
+
+from vibeify_api.core.celery_app import celery_app
+from vibeify_api.core.logging import get_logger
+from vibeify_api.services.user import UserService
+
+logger = get_logger(__name__)
+
+
+@celery_app.task(name="tasks.reports.generate_daily_report")
+def generate_daily_report() -> dict:
+    """Generate a daily report of user activity.
+    
+    This task runs nightly to create reports.
+    
+    Returns:
+        Dictionary with report data
+    """
+    logger.info("Starting daily report generation")
+    
+    try:
+        # Example: Get user statistics
+        user_service = UserService()
+        # Note: You'll need to implement a method to get stats
+        # users = await user_service.get_active_users_count()
+        
+        report = {
+            "date": datetime.utcnow().isoformat(),
+            "type": "daily_report",
+            "status": "completed",
+            # Add your report data here
+        }
+        
+        logger.info(f"Daily report generated: {report}")
+        return report
+        
+    except Exception as e:
+        logger.error(f"Error generating daily report: {e}", exc_info=True)
+        raise
+```
+
+**2. Register the task** in `src/vibeify_api/tasks/__init__.py`:
+```python
+from vibeify_api.core.celery_app import celery_app
+
+# Import tasks to register them
+from vibeify_api.tasks.reports import generate_daily_report  # noqa: F401
+
+__all__ = ["celery_app"]
+```
+
+**3. Schedule the task** in `src/vibeify_api/core/celery_app.py`:
+```python
+from celery.schedules import crontab
+
+celery_app.conf.beat_schedule = {
+    "generate-daily-report": {
+        "task": "tasks.reports.generate_daily_report",
+        "schedule": crontab(hour=2, minute=0),  # Run at 2 AM daily
+    },
+}
+```
+
+**4. Call the task from your API** (optional):
+```python
+from vibeify_api.tasks.reports import generate_daily_report
+
+# Trigger task immediately
+result = generate_daily_report.delay()
+
+# Or schedule it for later
+from datetime import timedelta
+result = generate_daily_report.apply_async(eta=datetime.utcnow() + timedelta(hours=1))
+```
+
+### Monitoring Celery Tasks
+
+Check task status:
+```bash
+# Using Celery CLI
+poetry run celery -A vibeify_api.core.celery_app inspect active
+poetry run celery -A vibeify_api.core.celery_app inspect scheduled
+poetry run celery -A vibeify_api.core.celery_app inspect stats
+```
+
+Or use Flower (optional, add to dependencies):
+```bash
+poetry add flower
+poetry run celery -A vibeify_api.core.celery_app flower
+```
 
 ## Database Migrations
 
@@ -145,10 +308,13 @@ vibeify-api/
 │       │   └── v1/         # API version 1
 │       ├── core/           # Core functionality
 │       │   ├── config.py   # Application settings
-│       │   └── database.py # Database connection
+│       │   ├── database.py # Database connection
+│       │   ├── celery_app.py # Celery configuration
+│       │   └── logging.py  # Logging configuration
 │       ├── models/         # SQLAlchemy models
 │       ├── schemas/        # Pydantic schemas
 │       ├── services/       # Business logic
+│       ├── tasks/          # Celery background tasks
 │       ├── tests/          # Test files
 │       └── main.py         # FastAPI application entry point
 ├── alembic.ini             # Alembic configuration
@@ -204,6 +370,9 @@ Key settings:
 - `DATABASE_URL` or individual `DB_*` components
 - `DEBUG` - Enable/disable debug mode
 - `CORS_ORIGINS` - Allowed CORS origins (comma-separated)
+- `REDIS_URL` - Redis connection URL for Celery
+- `CELERY_BROKER_URL` - Optional override for Celery broker
+- `CELERY_RESULT_BACKEND` - Optional override for Celery result backend
 
 ## API Endpoints
 
