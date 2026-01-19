@@ -1,4 +1,5 @@
 """Authentication schemas."""
+import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -43,8 +44,8 @@ class UserResponse(BaseModel):
     username: str
     full_name: Optional[str]
     is_active: bool
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
 
     class Config:
         """Pydantic configuration."""

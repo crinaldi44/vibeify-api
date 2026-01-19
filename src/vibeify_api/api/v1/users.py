@@ -3,18 +3,16 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from querymate import Querymate
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from vibeify_api.core.database import get_db
 from vibeify_api.models.user import User
 from vibeify_api.services.user import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+def get_user_service() -> UserService:
     """Dependency to get user service instance."""
-    return UserService(db)
+    return UserService()
 
 
 @router.get(

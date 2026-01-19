@@ -3,9 +3,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from vibeify_api.core.database import get_db
 from vibeify_api.core.security import decode_access_token
 from vibeify_api.models.user import User
 from vibeify_api.services.user import UserService
@@ -16,13 +14,11 @@ security = HTTPBearer()
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db),
 ) -> User:
     """Get the current authenticated user from JWT token.
 
     Args:
         credentials: HTTP Bearer token credentials
-        db: Database session
 
     Returns:
         Current user instance
@@ -49,7 +45,7 @@ async def get_current_user(
         )
     
     # Get user from database
-    user_service = UserService(db)
+    user_service = UserService()
     user = await user_service.get(user_id)
     
     if user is None:

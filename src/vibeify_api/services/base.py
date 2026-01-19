@@ -2,9 +2,9 @@
 from typing import Generic, TypeVar, Optional, Type, Any
 
 from querymate import Querymate
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
+from vibeify_api.core.database import AsyncSessionLocal
 from vibeify_api.repository.base import BaseRepository
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
@@ -16,16 +16,14 @@ class BaseService(Generic[ModelType]):
     Combines repository layer with QueryMate for flexible querying.
     """
 
-    def __init__(self, model: Type[ModelType], session: AsyncSession):
-        """Initialize service with model and session.
+    def __init__(self, model: Type[ModelType]):
+        """Initialize service with model.
 
         Args:
             model: SQLModel class
-            session: Async database session
         """
         self.model = model
-        self.repository = BaseRepository(model, session)
-        self.session = session
+        self.repository = BaseRepository(model)
 
     async def get(self, id: int) -> Optional[ModelType]:
         """Get a single record by ID.
@@ -115,7 +113,8 @@ class BaseService(Generic[ModelType]):
         Returns:
             List of serialized model instances
         """
-        return await query.run_async(self.session, self.model)
+        async with AsyncSessionLocal() as session:
+            return await query.run_async(session, self.model)
 
     async def query_paginated(
         self,
@@ -129,7 +128,8 @@ class BaseService(Generic[ModelType]):
         Returns:
             Paginated response with items and pagination metadata
         """
-        return await query.run_paginated_async(self.session, self.model)
+        async with AsyncSessionLocal() as session:
+            return await query.run_paginated_async(session, self.model)
 
     async def query_raw(
         self,
@@ -143,4 +143,5 @@ class BaseService(Generic[ModelType]):
         Returns:
             List of model instances (not serialized)
         """
-        return await query.run_raw_async(self.session, self.model)
+        async with AsyncSessionLocal() as session:
+            return await query.run_raw_async(session, self.model)
