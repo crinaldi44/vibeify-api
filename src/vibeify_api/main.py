@@ -10,9 +10,12 @@ from vibeify_api.api.v1.router import api_router
 from vibeify_api.core.config import get_settings
 from vibeify_api.core.database import close_db, init_db
 from vibeify_api.core.exceptions import ServiceException
+from vibeify_api.core.logging import get_logger, setup_logging
 
 settings = get_settings()
 
+setup_logging()
+logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -65,6 +68,11 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     Returns:
         JSONResponse with standardized error format
     """
+    logger.debug(f"Unhandled exception: {exc}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+        })
     return JSONResponse(
         status_code=exc.status_code,
         content={
