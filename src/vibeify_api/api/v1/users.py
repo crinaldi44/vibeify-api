@@ -22,7 +22,7 @@ def get_user_service() -> UserService:
     response_model=PaginatedResponse[UserResponse],
     description="Get paginated list of users with QueryMate",
 )
-async def list_users_paginated(
+async def list_users(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     service: UserService = Depends(get_user_service),
     q: Optional[str] = Query(None, description="Query"),

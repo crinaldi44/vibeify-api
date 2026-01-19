@@ -4,8 +4,10 @@ from typing import Generic, List, TypeVar, Optional, Type, Any
 from querymate import Querymate
 from sqlmodel import SQLModel
 
+from vibeify_api.core.context import get_current_user_from_context, require_current_user
 from vibeify_api.core.database import AsyncSessionLocal
 from vibeify_api.core.exceptions import NotFoundError
+from vibeify_api.models.user import User
 from vibeify_api.repository.base import BaseRepository
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
@@ -144,3 +146,22 @@ class BaseService(Generic[ModelType]):
             List of model instances (not serialized)
         """
         return await self.repository.query_raw(query)
+    
+    def get_current_user(self) -> Optional[User]:
+        """Get current user from request context.
+        
+        Returns:
+            Current user or None if not authenticated
+        """
+        return get_current_user_from_context()
+    
+    def require_current_user(self) -> User:
+        """Get current user from context, raising error if not set.
+        
+        Returns:
+            Current user instance
+            
+        Raises:
+            AuthenticationError: If no user in context
+        """
+        return require_current_user()

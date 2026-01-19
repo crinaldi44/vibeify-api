@@ -17,16 +17,8 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> User:
     """Get the current authenticated user from JWT token.
-
-    Args:
-        credentials: HTTP Bearer token credentials
-
-    Returns:
-        Current user instance
-
-    Raises:
-        AuthenticationError: If token is invalid or user not found
-        AuthorizationError: If user is inactive
+    
+    Also sets the user in request context for service access.
     """
     token = credentials.credentials
     payload = decode_access_token(token)
@@ -38,12 +30,14 @@ async def get_current_user(
     if user_id is None:
         raise AuthenticationError("Could not validate credentials")
     
-    # Get user from database using service
     user_service = UserService()
     user = await user_service.get(int(user_id))
     
     if not user.is_active:
         raise AuthorizationError("Inactive user")
+    
+    from vibeify_api.core.context import set_current_user
+    set_current_user(user)
     
     return user
 
