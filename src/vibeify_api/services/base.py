@@ -1,5 +1,5 @@
 """Base service for business logic layer."""
-from typing import Generic, TypeVar, Optional, Type, Any
+from typing import Generic, List, TypeVar, Optional, Type, Any
 
 from querymate import Querymate
 from sqlmodel import SQLModel
@@ -43,22 +43,6 @@ class BaseService(Generic[ModelType]):
             model_name = self.model.__name__
             raise NotFoundError(model_name, id)
         return result
-
-    async def get_multi(
-        self,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> list[ModelType]:
-        """Get multiple records with pagination.
-
-        Args:
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-
-        Returns:
-            List of model instances
-        """
-        return await self.repository.get_multi(skip=skip, limit=limit)
 
     async def create(self, obj_in: ModelType | dict[str, Any]) -> ModelType:
         """Create a new record.
@@ -131,10 +115,9 @@ class BaseService(Generic[ModelType]):
         Returns:
             List of serialized model instances
         """
-        async with AsyncSessionLocal() as session:
-            return await query.run_async(session, self.model)
+        return await self.repository.query(query)
 
-    async def query_paginated(
+    async def list(
         self,
         query: Querymate,
     ) -> Any:
@@ -146,13 +129,12 @@ class BaseService(Generic[ModelType]):
         Returns:
             Paginated response with items and pagination metadata
         """
-        async with AsyncSessionLocal() as session:
-            return await query.run_paginated_async(session, self.model)
+        return await self.repository.query_paginated(query)
 
     async def query_raw(
         self,
         query: Querymate,
-    ) -> list[ModelType]:
+    ) -> List[ModelType]:
         """Query records using QueryMate, returning raw model instances.
 
         Args:
@@ -161,5 +143,4 @@ class BaseService(Generic[ModelType]):
         Returns:
             List of model instances (not serialized)
         """
-        async with AsyncSessionLocal() as session:
-            return await query.run_raw_async(session, self.model)
+        return await self.repository.query_raw(query)

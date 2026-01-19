@@ -64,4 +64,5 @@ async def get_user_profile(
     Returns:
         Current user information
     """
-    return UserResponse.model_validate(current_user)
+    user_service = UserService()
+    return await user_service.get_user_profile(current_user.id)

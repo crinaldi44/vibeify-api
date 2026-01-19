@@ -40,7 +40,7 @@ async def get_current_user(
     
     # Get user from database using service
     user_service = UserService()
-    user = await user_service.get(user_id)
+    user = await user_service.get(int(user_id))
     
     if not user.is_active:
         raise AuthorizationError("Inactive user")

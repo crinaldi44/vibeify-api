@@ -36,6 +36,20 @@ class UserRegister(BaseModel):
     full_name: Optional[str] = Field(default=None, max_length=200)
 
 
+class RoleResponse(BaseModel):
+    """Role response schema."""
+    
+    id: int
+    name: str
+    description: Optional[str]
+    is_active: bool
+
+    class Config:
+        """Pydantic configuration."""
+        
+        from_attributes = True
+
+
 class UserResponse(BaseModel):
     """User response schema (excludes sensitive fields)."""
 
@@ -44,6 +58,8 @@ class UserResponse(BaseModel):
     username: str
     full_name: Optional[str]
     is_active: bool
+    role: Optional[RoleResponse] = None
+    role_id: Optional[int] = None
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
@@ -51,9 +67,3 @@ class UserResponse(BaseModel):
         """Pydantic configuration."""
 
         from_attributes = True
-
-
-class UserInDB(User):
-    """User model for internal use (includes all fields)."""
-
-    hashed_password: Optional[str] = None

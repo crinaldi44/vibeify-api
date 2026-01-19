@@ -6,29 +6,29 @@ from sqlalchemy import Column, DateTime, func
 from sqlmodel import SQLModel, Field
 
 
-class TimestampMixin(SQLModel):
+class TimestampMixin:
     """Mixin to add created_at and updated_at timestamp fields."""
 
-    created_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            nullable=False,
-        ),
-    )
-    updated_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now(),
-            nullable=False,
-        ),
-    )
+    # created_at: Optional[datetime] = Field(
+    #     default=None,
+    #     sa_column=Column(
+    #         DateTime(timezone=True),
+    #         server_default=func.now(),
+    #         nullable=False,
+    #     ),
+    # )
+    # updated_at: Optional[datetime] = Field(
+    #     default=None,
+    #     sa_column=Column(
+    #         DateTime(timezone=True),
+    #         server_default=func.now(),
+    #         onupdate=func.now(),
+    #         nullable=False,
+    #     ),
+    # )
 
 
-class BaseModel(TimestampMixin):
+class BaseModel(SQLModel, TimestampMixin):
     """Base model with common fields and methods.
     
     Use table=True to create a database table, table=False for API schemas.

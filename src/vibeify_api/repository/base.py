@@ -77,6 +77,18 @@ class BaseRepository(Generic[ModelType]):
             await session.refresh(db_obj)
             return db_obj
 
+    async def query(self, query):
+        async with AsyncSessionLocal() as session:
+            return await query.run_async(session, self.model)
+
+    async def query_paginated(self, query):
+        async with AsyncSessionLocal() as session:
+            return await query.run_async_paginated(session, self.model)
+
+    async def query_raw(self, query):
+        async with AsyncSessionLocal() as session:
+            return await query.run_raw_async(session, self.model)
+
     async def update(
         self,
         id: int,
