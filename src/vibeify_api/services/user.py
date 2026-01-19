@@ -1,6 +1,5 @@
 """User service for business logic."""
 from datetime import timedelta
-from typing import List, Optional
 
 from fastapi import HTTPException, status
 from querymate import Querymate
@@ -17,6 +16,9 @@ class UserService(BaseService[User]):
     def __init__(self):
         """Initialize user service."""
         super().__init__(User)
+
+    async def query(self, query: Querymate) -> list[User]:
+        return await super().query(query)
 
     async def login_user(self, user_data: UserLogin) -> Token:
         users = await self.query_raw(

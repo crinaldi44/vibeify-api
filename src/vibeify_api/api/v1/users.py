@@ -1,10 +1,11 @@
 """User API routes."""
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from querymate import Querymate
 
 from vibeify_api.models.user import User
+from vibeify_api.schemas.auth import UserResponse
 from vibeify_api.services.user import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -17,14 +18,15 @@ def get_user_service() -> UserService:
 
 @router.get(
     "/",
-    response_model=List[User],
+    response_model=List[UserResponse],
     summary="List users",
     description="Get a list of users with flexible querying via QueryMate",
 )
 async def list_users(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     service: UserService = Depends(get_user_service),
-) -> List[User]:
+    q: Optional[str] = Query(None, description="Query"),
+) -> List[UserResponse]:
     """List users with filtering, sorting, pagination, and field selection.
 
     Query parameters (via QueryMate):
@@ -48,12 +50,14 @@ async def list_users(
 @router.get(
     "/paginated",
     summary="List users with pagination",
+    response_model=List[UserResponse],
     description="Get paginated list of users with QueryMate",
 )
 async def list_users_paginated(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     service: UserService = Depends(get_user_service),
-):
+    q: Optional[str] = Query(None, description="Query"),
+) -> List[UserResponse]:
     """List users with pagination metadata.
 
     Same query parameters as `/users` endpoint, but returns pagination info.
