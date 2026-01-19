@@ -66,24 +66,6 @@ async def list_users_paginated(
     if query.include_pagination:
         return await service.query_paginated(query)
     return await service.query(query)
-    """Create a new user.
-
-    Args:
-        user: User data (email, username, full_name, etc.)
-
-    Returns:
-        Created user instance
-
-    Raises:
-        AlreadyExistsError: If email or username already exists
-        ValidationError: If validation fails
-    """
-    return await service.create_user(
-        email=user.email,
-        username=user.username,
-        full_name=user.full_name,
-        hashed_password=user.hashed_password,
-    )
 
 
 @router.patch(

@@ -23,7 +23,7 @@ class UserService(BaseService[User]):
         """Initialize user service."""
         super().__init__(User)
 
-    async def query(self, query: Querymate) -> list[User]:
+    async def query(self, query: Querymate) -> list[UserResponse]:
         return await super().query(query)
 
     async def get_user_by_email(self, email: str) -> User | None:

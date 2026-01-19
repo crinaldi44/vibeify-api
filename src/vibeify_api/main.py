@@ -1,12 +1,15 @@
 """Main FastAPI application entry point."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from vibeify_api.api.v1.router import api_router
 from vibeify_api.core.config import get_settings
 from vibeify_api.core.database import close_db, init_db
+from vibeify_api.core.exceptions import ServiceException
 
 settings = get_settings()
 
@@ -27,6 +30,120 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(ServiceException)
+async def service_exception_handler(request: Request, exc: ServiceException) -> JSONResponse:
+    """Handle service layer exceptions with standardized error format.
+
+    Args:
+        request: FastAPI request object
+        exc: ServiceException instance
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail or "An error occurred",
+            "status_code": exc.status_code,
+            "detail": exc.detail,
+        },
+        headers=exc.headers if hasattr(exc, "headers") and exc.headers else None,
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handle HTTP exceptions with standardized error format.
+
+    Args:
+        request: FastAPI request object
+        exc: HTTPException instance
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail or "An error occurred",
+            "status_code": exc.status_code,
+            "detail": exc.detail,
+        },
+        headers=exc.headers if hasattr(exc, "headers") and exc.headers else None,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Handle request validation errors with standardized error format.
+
+    Args:
+        request: FastAPI request object
+        exc: RequestValidationError instance
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    errors = exc.errors()
+    error_messages = []
+    messages = []
+    
+    for error in errors:
+        field = " -> ".join(str(loc) for loc in error["loc"])
+        message = error["msg"]
+        error_type = error.get("type", "validation_error")
+        
+        # Add to detail string
+        error_messages.append(f"{field}: {message}")
+        
+        # Add structured message
+        messages.append({
+            "field": field,
+            "message": message,
+            "type": error_type,
+            "location": list(error["loc"]),
+        })
+
+    detail = "; ".join(error_messages) if error_messages else "Validation error"
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "An error occurred while processing the request.",
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "detail": detail,
+            "messages": messages,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle unexpected exceptions with standardized error format.
+
+    Args:
+        request: FastAPI request object
+        exc: Exception instance
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    # Only show detailed error in debug mode
+    detail = str(exc) if settings.DEBUG else "An unexpected error occurred"
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Internal server error",
+            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "detail": detail,
+        },
+    )
 
 # CORS middleware
 app.add_middleware(
