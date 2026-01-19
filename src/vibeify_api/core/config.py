@@ -54,12 +54,12 @@ class Settings(BaseSettings):
         """Get Celery result backend URL."""
         return self.CELERY_RESULT_BACKEND or self.REDIS_URL
 
-    # AWS S3 Settings
     AWS_ACCESS_KEY_ID: Optional[str] = None
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str = "vibeify-documents"
-    S3_PRESIGNED_URL_EXPIRATION: int = 3600  # 1 hour in seconds
+    S3_PRESIGNED_URL_EXPIRATION: int = 3600
+    S3_ENDPOINT_URL: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

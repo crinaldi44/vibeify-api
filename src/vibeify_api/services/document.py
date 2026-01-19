@@ -1,16 +1,15 @@
 """Document service for business logic."""
 from pathlib import Path
-from typing import Optional
 
 from fastapi import UploadFile
 from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.config import get_settings
-from vibeify_api.core.exceptions import NotFoundError, ValidationError
+from vibeify_api.core.exceptions import NotFoundError
 from vibeify_api.models import User
 from vibeify_api.models.document import Document
 from vibeify_api.repository.s3 import S3Repository
-from vibeify_api.schemas.document import DocumentCreate, DocumentResponse
+from vibeify_api.schemas.document import DocumentResponse, DocumentUploadResponse
 from vibeify_api.services.base import BaseService
 
 settings = get_settings()
@@ -27,12 +26,12 @@ class DocumentService(BaseService[Document]):
     async def create_upload(
         self,
         file: UploadFile
-    ) -> dict:
+    ) -> DocumentUploadResponse:
         """Creates a document record from the input file buffer and generates a
         presigned upload URL for upload.
         
         Args:
-            document_data: Document creation data
+            file: The file being imported
 
         Returns:
             Dictionary with document record and presigned upload URL
@@ -59,12 +58,12 @@ class DocumentService(BaseService[Document]):
         )
         
         upload_url = await self.s3_repo.generate_presigned_url(s3_key, operation="put_object")
-        
-        return {
-            "document": DocumentResponse.model_validate(document),
-            "upload_url": upload_url,
-            "s3_key": s3_key,
-        }
+
+        return DocumentUploadResponse(
+            document=DocumentResponse.model_validate(document),
+            upload_url=upload_url,
+            s3_key=s3_key
+        )
 
     async def list(
         self,

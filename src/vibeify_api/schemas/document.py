@@ -2,10 +2,8 @@
 import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
-from vibeify_api.models.document import Document
-from vibeify_api.models.enums import DocumentType
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class DocumentResponse(BaseModel):
@@ -14,6 +12,7 @@ class DocumentResponse(BaseModel):
     id: int
     filename: str
     original_filename: str
+    file_extension: str
     content_type: Optional[str]
     file_size: int
     s3_key: str
@@ -22,14 +21,21 @@ class DocumentResponse(BaseModel):
     is_active: bool
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
-    download_url: Optional[str] = None  # Presigned URL for download
+    download_url: Optional[str] = None
 
-    class Config:
-        """Pydantic configuration."""
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
 
-        from_attributes = True
+class DocumentUploadResponse(BaseModel):
+    document: DocumentResponse
+    upload_url: str
+    s3_key: str
 
-
-class DocumentCreate(BaseModel):
-    """Document creation schema."""
-    document_type: DocumentType = Field(description="Document type", alias="documentType")
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )

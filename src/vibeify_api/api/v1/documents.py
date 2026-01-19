@@ -6,7 +6,7 @@ from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.models.user import User
-from vibeify_api.schemas.document import DocumentCreate, DocumentResponse
+from vibeify_api.schemas.document import DocumentResponse, DocumentUploadResponse
 from vibeify_api.services.document import DocumentService
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -26,7 +26,7 @@ async def create_upload(
     file: UploadFile,
     current_user: User = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
-) -> dict:
+) -> DocumentUploadResponse:
     """Create a document record and get a presigned URL for uploading to S3.
     
     This endpoint creates a document record in the database and returns a presigned

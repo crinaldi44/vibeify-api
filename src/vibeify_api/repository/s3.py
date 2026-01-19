@@ -81,12 +81,15 @@ class S3Repository:
         """
         expiration = expiration or settings.S3_PRESIGNED_URL_EXPIRATION
         
-        async with self._session.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION,
-        ) as s3_client:
+        client_kwargs = {
+            "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
+            "region_name": settings.AWS_REGION,
+        }
+        if settings.S3_ENDPOINT_URL:
+            client_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        
+        async with self._session.client("s3", **client_kwargs) as s3_client:
             if operation == "put_object":
                 url = await s3_client.generate_presigned_url(
                     "put_object",
@@ -117,12 +120,15 @@ class S3Repository:
         Returns:
             Dictionary with upload result
         """
-        async with self._session.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION,
-        ) as s3_client:
+        client_kwargs = {
+            "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
+            "region_name": settings.AWS_REGION,
+        }
+        if settings.S3_ENDPOINT_URL:
+            client_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        
+        async with self._session.client("s3", **client_kwargs) as s3_client:
             extra_args = {}
             if content_type:
                 extra_args["ContentType"] = content_type
@@ -145,12 +151,15 @@ class S3Repository:
         Returns:
             True if deleted successfully
         """
-        async with self._session.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION,
-        ) as s3_client:
+        client_kwargs = {
+            "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
+            "region_name": settings.AWS_REGION,
+        }
+        if settings.S3_ENDPOINT_URL:
+            client_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        
+        async with self._session.client("s3", **client_kwargs) as s3_client:
             await s3_client.delete_object(
                 Bucket=self.bucket_name,
                 Key=s3_key,
@@ -166,12 +175,15 @@ class S3Repository:
         Returns:
             True if file exists
         """
-        async with self._session.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION,
-        ) as s3_client:
+        client_kwargs = {
+            "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
+            "region_name": settings.AWS_REGION,
+        }
+        if settings.S3_ENDPOINT_URL:
+            client_kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        
+        async with self._session.client("s3", **client_kwargs) as s3_client:
             try:
                 await s3_client.head_object(
                     Bucket=self.bucket_name,
