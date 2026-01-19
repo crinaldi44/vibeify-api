@@ -28,7 +28,7 @@ class TimestampMixin(SQLModel):
     )
 
 
-class BaseModel(SQLModel, TimestampMixin):
+class BaseModel(TimestampMixin):
     """Base model with common fields and methods.
     
     Use table=True to create a database table, table=False for API schemas.

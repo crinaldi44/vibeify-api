@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vibeify-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vibeify
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: vibeify-api
+  #   environment:
+  #     # Database connection
+  #     DB_HOST: db
+  #     DB_PORT: 5432
+  #     DB_USER: postgres
+  #     DB_PASSWORD: postgres
+  #     DB_NAME: vibeify
+  #     # Or use DATABASE_URL instead
+  #     # DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/vibeify
+      
+  #     # API Settings
+  #     API_V1_PREFIX: /api/v1
+  #     PROJECT_NAME: Vibeify API
+  #     VERSION: 0.1.0
+  #     DEBUG: "false"
+      
+  #     # CORS Settings (comma-separated)
+  #     CORS_ORIGINS: http://localhost:3000,http://localhost:8000
+      
+  #     # Security Settings (change in production!)
+  #     SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this-in-production}
+  #     ALGORITHM: HS256
+  #     ACCESS_TOKEN_EXPIRE_MINUTES: 30
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   command: poetry run uvicorn vibeify_api.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:

@@ -16,7 +16,11 @@ dependencies = [
     "asyncpg (>=0.31.0,<0.32.0)",
     "psycopg2-binary (>=2.9.10,<3.0.0)",
     "pydantic-settings (>=2.5.0,<3.0.0)",
-    "querymate (>=0.6.9,<0.7.0)"
+    "querymate (>=0.6.9,<0.7.0)",
+    "python-jose[cryptography] (>=3.3.0,<4.0.0)",
+    "passlib[bcrypt] (>=1.7.4,<2.0.0)",
+    "python-multipart (>=0.0.12,<1.0.0)",
+    "email-validator (>=2.3.0,<3.0.0)"
 ]
 
 [tool.poetry]

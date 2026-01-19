@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # CORS Settings
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 
+    # Security Settings
+    SECRET_KEY: str = "your-secret-key-change-this-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
