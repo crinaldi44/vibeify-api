@@ -40,6 +40,6 @@ from celery.schedules import crontab
 celery_app.conf.beat_schedule = {
     "run-example-task-every-5-min": {
         "task": "tasks.example.hello_world",
-        "schedule": timedelta(hours=1),
+        "schedule": timedelta(seconds=50),
     },
 }

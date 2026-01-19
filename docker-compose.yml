@@ -32,47 +32,49 @@ services:
       retries: 5
     command: redis-server --appendonly yes
 
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: vibeify-api
-  #   environment:
-  #     # Database connection
-  #     DB_HOST: db
-  #     DB_PORT: 5432
-  #     DB_USER: postgres
-  #     DB_PASSWORD: postgres
-  #     DB_NAME: vibeify
-  #     # Or use DATABASE_URL instead
-  #     # DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/vibeify
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vibeify-api
+    environment:
+      # Database connection
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: vibeify
+      # Or use DATABASE_URL instead
+      # DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/vibeify
       
-  #     # API Settings
-  #     API_V1_PREFIX: /api/v1
-  #     PROJECT_NAME: Vibeify API
-  #     VERSION: 0.1.0
-  #     DEBUG: "false"
+      # API Settings
+      API_V1_PREFIX: /api/v1
+      PROJECT_NAME: Vibeify API
+      VERSION: 0.1.0
+      DEBUG: "true"
       
-  #     # CORS Settings (comma-separated)
-  #     CORS_ORIGINS: http://localhost:3000,http://localhost:8000
+      # CORS Settings (comma-separated)
+      CORS_ORIGINS: http://localhost:3000,http://localhost:8000
       
-  #     # Security Settings (change in production!)
-  #     SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this-in-production}
-  #     ALGORITHM: HS256
-  #     ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      # Security Settings (change in production!)
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this-in-production}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
       
-  #     # Redis/Celery Settings
-  #     REDIS_URL: redis://redis:6379/0
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - .:/app
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   command: poetry run uvicorn vibeify_api.main:app --host 0.0.0.0 --port 8000 --reload
+      # Redis/Celery Settings
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./poetry.lock:/app/poetry.lock
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: poetry run uvicorn vibeify_api.main:app --host 0.0.0.0 --port 8000 --reload
 
   celery:
     build:
@@ -89,17 +91,20 @@ services:
       API_V1_PREFIX: /api/v1
       PROJECT_NAME: Vibeify API
       VERSION: 0.1.0
-      DEBUG: "false"
+      DEBUG: "true"
       
       REDIS_URL: redis://redis:6379/0
     volumes:
-      - .:/app
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./poetry.lock:/app/poetry.lock
+      - ./scripts:/app/scripts
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A vibeify_api.core.celery_app worker --loglevel=info
+    command: sh -c "pip install watchfiles && python scripts/celery-reload.py -A vibeify_api.core.celery_app worker --loglevel=info"
 
   celery-beat:
     build:
@@ -117,13 +122,16 @@ services:
       # Redis/Celery Settings
       REDIS_URL: redis://redis:6379/0
     volumes:
-      - .:/app
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./poetry.lock:/app/poetry.lock
+      - ./scripts:/app/scripts
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A vibeify_api.core.celery_app beat --loglevel=info
+    command: sh -c "pip install watchfiles && python scripts/celery-reload.py -A vibeify_api.core.celery_app beat --loglevel=info"
 
 volumes:
   postgres_data:
