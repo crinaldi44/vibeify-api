@@ -52,8 +52,8 @@ async def login(
     return await user_service.login_user(user_data)
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_info(
+@router.get("/profile", response_model=UserResponse)
+async def get_user_profile(
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
     """Get current authenticated user information.

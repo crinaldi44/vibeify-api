@@ -1,7 +1,7 @@
 """User API routes."""
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from querymate import Querymate
 
 from vibeify_api.models.user import User
@@ -25,7 +25,7 @@ def get_user_service() -> UserService:
 async def list_users(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     service: UserService = Depends(get_user_service),
-    q: Optional[str] = Query(None, description="Query"),
+    q: Optional[str] = Query(None, description="Query param for filtering, sorting, and pagination"),
 ) -> List[UserResponse]:
     """List users with filtering, sorting, pagination, and field selection.
 
@@ -66,47 +66,6 @@ async def list_users_paginated(
     if query.include_pagination:
         return await service.query_paginated(query)
     return await service.query(query)
-
-
-@router.get(
-    "/{user_id}",
-    response_model=User,
-    summary="Get user by ID",
-)
-async def get_user(
-    user_id: int,
-    service: UserService = Depends(get_user_service),
-) -> User:
-    """Get a single user by ID.
-
-    Args:
-        user_id: User ID
-
-    Returns:
-        User instance
-
-    Raises:
-        HTTPException: If user not found
-    """
-    user = await service.get(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with ID {user_id} not found",
-        )
-    return user
-
-
-@router.post(
-    "/",
-    response_model=User,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create user",
-)
-async def create_user(
-    user: User,
-    service: UserService = Depends(get_user_service),
-) -> User:
     """Create a new user.
 
     Args:
@@ -116,32 +75,27 @@ async def create_user(
         Created user instance
 
     Raises:
-        HTTPException: If email or username already exists
+        AlreadyExistsError: If email or username already exists
+        ValidationError: If validation fails
     """
-    try:
-        return await service.create_user(
-            email=user.email,
-            username=user.username,
-            full_name=user.full_name,
-            hashed_password=user.hashed_password,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+    return await service.create_user(
+        email=user.email,
+        username=user.username,
+        full_name=user.full_name,
+        hashed_password=user.hashed_password,
+    )
 
 
 @router.patch(
     "/{user_id}",
-    response_model=User,
+    response_model=UserResponse,
     summary="Update user",
 )
 async def update_user(
     user_id: int,
-    user: User,
+    user: UserResponse,
     service: UserService = Depends(get_user_service),
-) -> User:
+) -> UserResponse:
     """Update a user by ID.
 
     Args:
@@ -152,15 +106,9 @@ async def update_user(
         Updated user instance
 
     Raises:
-        HTTPException: If user not found
+        NotFoundError: If user not found
     """
-    updated_user = await service.update(user_id, user.model_dump(exclude_unset=True))
-    if not updated_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with ID {user_id} not found",
-        )
-    return updated_user
+    return await service.update(user_id, user.model_dump(exclude_unset=True))
 
 
 @router.delete(
@@ -178,11 +126,6 @@ async def delete_user(
         user_id: User ID
 
     Raises:
-        HTTPException: If user not found
+        NotFoundError: If user not found
     """
-    deleted = await service.delete(user_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with ID {user_id} not found",
-        )
+    await service.delete(user_id)

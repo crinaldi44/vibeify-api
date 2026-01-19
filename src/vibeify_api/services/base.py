@@ -5,6 +5,7 @@ from querymate import Querymate
 from sqlmodel import SQLModel
 
 from vibeify_api.core.database import AsyncSessionLocal
+from vibeify_api.core.exceptions import NotFoundError
 from vibeify_api.repository.base import BaseRepository
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
@@ -25,16 +26,23 @@ class BaseService(Generic[ModelType]):
         self.model = model
         self.repository = BaseRepository(model)
 
-    async def get(self, id: int) -> Optional[ModelType]:
+    async def get(self, id: int) -> ModelType:
         """Get a single record by ID.
 
         Args:
             id: Record identifier
 
         Returns:
-            Model instance or None if not found
+            Model instance
+
+        Raises:
+            NotFoundError: If record not found
         """
-        return await self.repository.get(id)
+        result = await self.repository.get(id)
+        if result is None:
+            model_name = self.model.__name__
+            raise NotFoundError(model_name, id)
+        return result
 
     async def get_multi(
         self,
@@ -67,7 +75,7 @@ class BaseService(Generic[ModelType]):
         self,
         id: int,
         obj_in: ModelType | dict[str, Any],
-    ) -> Optional[ModelType]:
+    ) -> ModelType:
         """Update a record by ID.
 
         Args:
@@ -75,20 +83,30 @@ class BaseService(Generic[ModelType]):
             obj_in: Model instance or dictionary of attributes to update
 
         Returns:
-            Updated model instance or None if not found
-        """
-        return await self.repository.update(id, obj_in)
+            Updated model instance
 
-    async def delete(self, id: int) -> bool:
+        Raises:
+            NotFoundError: If record not found
+        """
+        result = await self.repository.update(id, obj_in)
+        if result is None:
+            model_name = self.model.__name__
+            raise NotFoundError(model_name, id)
+        return result
+
+    async def delete(self, id: int) -> None:
         """Delete a record by ID.
 
         Args:
             id: Record identifier
 
-        Returns:
-            True if deleted, False if not found
+        Raises:
+            NotFoundError: If record not found
         """
-        return await self.repository.delete(id)
+        deleted = await self.repository.delete(id)
+        if not deleted:
+            model_name = self.model.__name__
+            raise NotFoundError(model_name, id)
 
     async def exists(self, id: int) -> bool:
         """Check if a record exists by ID.

@@ -1,9 +1,10 @@
 """FastAPI dependencies for authentication."""
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+from vibeify_api.core.exceptions import AuthenticationError, AuthorizationError
 from vibeify_api.core.security import decode_access_token
 from vibeify_api.models.user import User
 from vibeify_api.services.user import UserService
@@ -24,42 +25,25 @@ async def get_current_user(
         Current user instance
 
     Raises:
-        HTTPException: If token is invalid or user not found
+        AuthenticationError: If token is invalid or user not found
+        AuthorizationError: If user is inactive
     """
     token = credentials.credentials
     payload = decode_access_token(token)
     
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError("Could not validate credentials")
     
     user_id: Optional[int] = payload.get("sub")
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError("Could not validate credentials")
     
-    # Get user from database
+    # Get user from database using service
     user_service = UserService()
     user = await user_service.get(user_id)
     
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user",
-        )
+        raise AuthorizationError("Inactive user")
     
     return user
 
