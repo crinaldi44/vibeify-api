@@ -32,3 +32,12 @@ celery_app.conf.update(
     # Result expiration
     result_expires=3600,  # 1 hour
 )
+
+from celery.schedules import crontab
+
+celery_app.conf.beat_schedule = {
+    "run-example-task-every-5-min": {
+        "task": "vibeify.example_task",
+        "schedule": crontab(minute="*/5"),
+    },
+}

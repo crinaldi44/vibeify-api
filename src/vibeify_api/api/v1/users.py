@@ -1,7 +1,7 @@
 """User API routes."""
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Path
 from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.models.user import User
@@ -36,19 +36,19 @@ async def list_users_paginated(
 
 
 @router.patch(
-    "/{user_id}",
+    "/{id}",
     response_model=UserResponse,
     summary="Update user",
 )
 async def update_user(
-    user_id: int,
     user: UserResponse,
+    id: int,
     service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     """Update a user by ID.
 
     Args:
-        user_id: User ID
+        id: User ID
         user: User data to update (only provided fields will be updated)
 
     Returns:
@@ -57,24 +57,24 @@ async def update_user(
     Raises:
         NotFoundError: If user not found
     """
-    return await service.update(user_id, user.model_dump(exclude_unset=True))
+    return await service.update(id, user.model_dump(exclude_unset=True))
 
 
 @router.delete(
-    "/{user_id}",
+    "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete user",
 )
 async def delete_user(
-    user_id: int,
+    id: int,
     service: UserService = Depends(get_user_service),
 ):
     """Delete a user by ID.
 
     Args:
-        user_id: User ID
+        id: User ID
 
     Raises:
         NotFoundError: If user not found
     """
-    await service.delete(user_id)
+    await service.delete(id)

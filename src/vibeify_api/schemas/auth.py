@@ -4,9 +4,6 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
-from vibeify_api.models.user import User
-
-
 class Token(BaseModel):
     """JWT token response schema."""
 
