@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from vibeify_api.models.document import Document
+from vibeify_api.models.enums import DocumentType
 
 
 class DocumentResponse(BaseModel):
@@ -31,7 +32,4 @@ class DocumentResponse(BaseModel):
 
 class DocumentCreate(BaseModel):
     """Document creation schema."""
-
-    filename: str = Field(..., max_length=255, description="Original filename")
-    content_type: Optional[str] = Field(None, max_length=100, description="MIME type")
-    file_size: int = Field(..., ge=0, description="File size in bytes")
+    document_type: DocumentType = Field(description="Document type", alias="documentType")

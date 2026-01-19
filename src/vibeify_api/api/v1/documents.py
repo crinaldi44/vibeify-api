@@ -1,7 +1,7 @@
 """Document API routes."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, UploadFile, status
 from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.dependencies import get_current_user
@@ -23,7 +23,7 @@ def get_document_service() -> DocumentService:
     summary="Create document record and get presigned upload URL",
 )
 async def create_upload(
-    document_data: DocumentCreate,
+    file: UploadFile,
     current_user: User = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ) -> dict:
@@ -34,7 +34,7 @@ async def create_upload(
     uploaded using a PUT request to the returned URL.
     
     Args:
-        document_data: Document metadata (filename, content_type, file_size)
+        file: File
         current_user: Current authenticated user
         service: Document service instance
         
@@ -59,7 +59,7 @@ async def create_upload(
             "s3_key": "2026/01/18/1/uuid-example.pdf"
         }
     """
-    return await service.create_upload(document_data, user_id=current_user.id)
+    return await service.create_upload(file)
 
 
 @router.get(

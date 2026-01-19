@@ -1,10 +1,13 @@
 """Document service for business logic."""
+from pathlib import Path
 from typing import Optional
 
+from fastapi import UploadFile
 from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.config import get_settings
 from vibeify_api.core.exceptions import NotFoundError, ValidationError
+from vibeify_api.models import User
 from vibeify_api.models.document import Document
 from vibeify_api.repository.s3 import S3Repository
 from vibeify_api.schemas.document import DocumentCreate, DocumentResponse
@@ -23,35 +26,38 @@ class DocumentService(BaseService[Document]):
 
     async def create_upload(
         self,
-        document_data: DocumentCreate,
-        user_id: Optional[int] = None,
+        file: UploadFile
     ) -> dict:
-        """Create a document record and generate presigned upload URL.
+        """Creates a document record from the input file buffer and generates a
+        presigned upload URL for upload.
         
         Args:
             document_data: Document creation data
-            user_id: Optional user ID who is uploading
-            
+
         Returns:
             Dictionary with document record and presigned upload URL
         """
-        # Generate S3 key
-        s3_key = self.s3_repo.generate_key(document_data.filename, user_id)
-        
-        # Create document record
+        user: User = self.require_current_user()
+        user_id = user.id
+
+        s3_key = self.s3_repo.generate_key(file.filename, user_id)
+
+        file_name = Path(file.filename).stem
+        file_ext = Path(file.filename).suffix.lower()
+
         document = await self.create(
             Document(
-                filename=document_data.filename,
-                original_filename=document_data.filename,
-                content_type=document_data.content_type,
-                file_size=document_data.file_size,
+                filename=file_name,
+                file_extension=file_ext,
+                original_filename=file.filename,
+                content_type=file.content_type,
+                file_size=file.size,
                 s3_key=s3_key,
                 s3_bucket=self.s3_repo.bucket_name,
                 uploaded_by_id=user_id,
             )
         )
         
-        # Generate presigned upload URL
         upload_url = await self.s3_repo.generate_presigned_url(s3_key, operation="put_object")
         
         return {
