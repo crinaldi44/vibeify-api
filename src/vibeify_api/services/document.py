@@ -63,7 +63,7 @@ class DocumentService(BaseService[Document]):
     async def list(
         self,
         query: Querymate,
-    ) -> dict:
+    ) -> PaginatedResponse[DocumentResponse]:
         """List documents with pagination.
         
         Args:

@@ -3,16 +3,20 @@ from typing import Optional, BinaryIO
 import uuid
 from datetime import datetime
 
+import aioboto3
+
 from vibeify_api.core.config import get_settings
-from vibeify_api.core.s3 import get_s3_session
 
 settings = get_settings()
+
+_s3_session: Optional[aioboto3.Session] = None
 
 
 class S3Repository:
     """Repository for S3 file storage operations.
     
     Provides abstraction over S3 operations for file storage and retrieval.
+    Uses a singleton session for efficient connection reuse.
     """
 
     def __init__(self, bucket_name: Optional[str] = None):
@@ -22,7 +26,19 @@ class S3Repository:
             bucket_name: S3 bucket name (defaults to settings.S3_BUCKET_NAME)
         """
         self.bucket_name = bucket_name or settings.S3_BUCKET_NAME
-        self.session = get_s3_session()
+        self._session = self._get_session()
+
+    @staticmethod
+    def _get_session() -> aioboto3.Session:
+        """Get or create singleton S3 session.
+        
+        Returns:
+            aioboto3.Session instance
+        """
+        global _s3_session
+        if _s3_session is None:
+            _s3_session = aioboto3.Session()
+        return _s3_session
 
     def generate_key(self, filename: str, user_id: Optional[int] = None) -> str:
         """Generate a predictable S3 key for a file.
@@ -65,7 +81,7 @@ class S3Repository:
         """
         expiration = expiration or settings.S3_PRESIGNED_URL_EXPIRATION
         
-        async with self.session.client(
+        async with self._session.client(
             "s3",
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
@@ -101,7 +117,7 @@ class S3Repository:
         Returns:
             Dictionary with upload result
         """
-        async with self.session.client(
+        async with self._session.client(
             "s3",
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
@@ -129,7 +145,7 @@ class S3Repository:
         Returns:
             True if deleted successfully
         """
-        async with self.session.client(
+        async with self._session.client(
             "s3",
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
@@ -150,7 +166,7 @@ class S3Repository:
         Returns:
             True if file exists
         """
-        async with self.session.client(
+        async with self._session.client(
             "s3",
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
