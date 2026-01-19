@@ -1,7 +1,8 @@
 """Models module."""
 
 from vibeify_api.models.base import BaseModel, TimestampMixin
-from vibeify_api.models.user import User
+from vibeify_api.models.document import Document
 from vibeify_api.models.role import Role
+from vibeify_api.models.user import User
 
-__all__ = ["BaseModel", "TimestampMixin", "User", "Role"]
+__all__ = ["BaseModel", "TimestampMixin", "Document", "Role", "User"]

@@ -12,6 +12,7 @@ from sqlmodel import SQLModel
 
 # Import all models to ensure they are registered with Base.metadata
 # This is necessary for autogenerate to detect model changes
+from vibeify_api.models.document import Document  # noqa: F401
 from vibeify_api.models.role import Role  # noqa: F401
 from vibeify_api.models.user import User  # noqa: F401
 
