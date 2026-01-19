@@ -99,7 +99,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: poetry run celery -A vibeify_api.core.celery_app worker --loglevel=info
+    command: celery -A vibeify_api.core.celery_app worker --loglevel=info
 
   celery-beat:
     build:
@@ -123,7 +123,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: poetry run celery -A vibeify_api.core.celery_app beat --loglevel=info
+    command: celery -A vibeify_api.core.celery_app beat --loglevel=info
 
 volumes:
   postgres_data:

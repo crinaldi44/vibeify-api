@@ -1,4 +1,6 @@
 """Celery application configuration."""
+from datetime import timedelta
+
 from celery import Celery
 
 from vibeify_api.core.config import get_settings
@@ -37,7 +39,7 @@ from celery.schedules import crontab
 
 celery_app.conf.beat_schedule = {
     "run-example-task-every-5-min": {
-        "task": "vibeify.example_task",
-        "schedule": crontab(minute="*/5"),
+        "task": "tasks.example.hello_world",
+        "schedule": timedelta(hours=1),
     },
 }
