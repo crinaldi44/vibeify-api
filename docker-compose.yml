@@ -72,7 +72,7 @@ services:
       DEBUG: "true"
       
       # CORS Settings (comma-separated)
-      CORS_ORIGINS: http://localhost:3000,http://localhost:8000
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
       
       # Security Settings (change in production!)
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this-in-production}
@@ -177,6 +177,42 @@ services:
       minio:
         condition: service_healthy
     command: sh -c "pip install watchfiles && python scripts/celery-reload.py -A vibeify_api.core.celery_app beat --loglevel=info"
+
+  openapi-generator:
+    image: node:20-alpine
+    container_name: vibeify-openapi-generator
+    working_dir: /app
+    environment:
+      TAR: 1
+    volumes:
+      - ./downloads:/app/downloads
+    depends_on:
+      api:
+        condition: service_started
+    command: >
+      sh -c "
+        apk add --no-cache curl openjdk17-jre &&
+        npm install -g @openapitools/openapi-generator-cli &&
+        echo 'Waiting for API to be ready...' &&
+        until curl -f http://api:8000/openapi.json > /dev/null 2>&1; do
+          echo 'Waiting for API...';
+          sleep 2;
+        done &&
+        echo 'Fetching OpenAPI spec...' &&
+        curl -f http://api:8000/openapi.json -o /tmp/openapi.json &&
+        echo 'Generating TypeScript client...' &&
+        openapi-generator-cli generate -i /tmp/openapi.json -g typescript-axios -o /app/downloads/typescript-client --additional-properties=supportsES6=true,npmName=vibeify-api-client,withInterfaces=true &&
+        echo 'TypeScript client generated successfully in downloads/typescript-client' &&
+        if [ \"$$TAR\" = \"1\" ]; then
+          echo 'Installing dependencies and creating npm package...' &&
+          cd /app/downloads/typescript-client &&
+          npm install &&
+          npm pack &&
+          echo 'npm package created in downloads/typescript-client/'
+        else
+          echo 'TAR variable not set to 1, skipping npm pack'
+        fi
+      "
 
 volumes:
   postgres_data:
