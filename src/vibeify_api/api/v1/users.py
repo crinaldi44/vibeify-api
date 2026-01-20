@@ -26,7 +26,7 @@ def get_user_service() -> UserService:
     responses=ERROR_RESPONSES,
     description="Get paginated list of users with QueryMate",
 )
-async def list_users(
+async def list_all(
     q: ListQueryParams = Query(description="Query"),
     service: UserService = Depends(get_user_service),
     current_user = Depends(get_current_user)
@@ -71,7 +71,7 @@ async def update_user(
     responses=ERROR_RESPONSES,
     summary="Delete user",
 )
-async def delete_user(
+async def delete(
     id: int,
     service: UserService = Depends(get_user_service),
 ):

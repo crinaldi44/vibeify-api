@@ -1,8 +1,4 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Query
-from querymate import PaginatedResponse
-from querymate.core.querymate import Querymate
 
 from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.core.exceptions import ERROR_RESPONSES
@@ -20,7 +16,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
     responses=ERROR_RESPONSES,
     description="Get paginated list of reports with QueryMate",
 )
-async def list_reports(
+async def list_all(
     q: ListQueryParams = Query(description="Query"),
     current_user = Depends(get_current_user)
 ) -> ListResponse[Report]:

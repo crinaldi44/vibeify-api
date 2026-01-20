@@ -71,7 +71,7 @@ async def create_upload(
     responses=ERROR_RESPONSES,
     description="Get paginated list of documents with QueryMate",
 )
-async def list_documents(
+async def list_all(
     q: ListQueryParams = Query(description="Query"),
     service: DocumentService = Depends(get_document_service),
 ) -> ListResponse[DocumentResponse]:
