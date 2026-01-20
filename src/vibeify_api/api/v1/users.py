@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status, Path
 from querymate import PaginatedResponse, Querymate
 
-from vibeify_api.models.user import User
+from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.schemas.auth import UserResponse
 from vibeify_api.services.user import UserService
 
@@ -26,6 +26,7 @@ async def list_users(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     service: UserService = Depends(get_user_service),
     q: Optional[str] = Query(None, description="Query"),
+    current_user = Depends(get_current_user)
 ) -> PaginatedResponse[UserResponse]:
     """List users with pagination metadata.
 
