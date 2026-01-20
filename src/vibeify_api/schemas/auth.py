@@ -2,7 +2,9 @@
 import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic.alias_generators import to_camel
+
 
 class Token(BaseModel):
     """JWT token response schema."""
@@ -10,11 +12,23 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
 
 class TokenData(BaseModel):
     """Token payload data."""
 
     user_id: Optional[int] = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
 
 
 class UserLogin(BaseModel):
@@ -32,6 +46,12 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=8)
     full_name: Optional[str] = Field(default=None, max_length=200)
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
 
 class RoleResponse(BaseModel):
     """Role response schema."""
@@ -41,10 +61,11 @@ class RoleResponse(BaseModel):
     description: Optional[str]
     is_active: bool
 
-    class Config:
-        """Pydantic configuration."""
-        
-        from_attributes = True
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
 
 
 class UserResponse(BaseModel):
@@ -60,7 +81,8 @@ class UserResponse(BaseModel):
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        from_attributes = True
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )

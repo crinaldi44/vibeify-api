@@ -1,19 +1,25 @@
 """Error response schemas."""
-from pydantic import BaseModel
+from typing import TypeVar
 
+from pydantic import ConfigDict
+from pydantic.alias_generators import to_camel
+from querymate import PaginatedResponse, PaginationInfo
 
-class ErrorResponse(BaseModel):
-    """Standardized error response format."""
+T = TypeVar("T")
 
-    error: str
-    status_code: int
-    detail: str | None = None
+class ListResponsePaginationInfo(PaginationInfo):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "error": "Resource not found",
-                "status_code": 404,
-                "detail": "User with ID 123 not found",
-            }
-        }
+class ListResponse[T](PaginatedResponse[T]):
+    """Custom paginated response schema."""
+    pagination: ListResponsePaginationInfo
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )

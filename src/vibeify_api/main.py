@@ -11,6 +11,7 @@ from vibeify_api.core.config import get_settings
 from vibeify_api.core.database import close_db, init_db
 from vibeify_api.core.exceptions import ServiceException
 from vibeify_api.core.logging import get_logger, setup_logging
+from vibeify_api.schemas.errors import ErrorResponse, ValidationErrorDetail
 
 settings = get_settings()
 
@@ -48,11 +49,11 @@ async def service_exception_handler(request: Request, exc: ServiceException) -> 
     """
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": exc.detail or "An error occurred",
-            "status_code": exc.status_code,
-            "detail": exc.detail,
-        },
+        content=ErrorResponse(
+            error=exc.detail or "An error occurred",
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ).model_dump(exclude_unset=True, by_alias=True),
         headers=exc.headers if hasattr(exc, "headers") and exc.headers else None,
     )
 
@@ -75,11 +76,11 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         })
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": exc.detail or "An error occurred",
-            "status_code": exc.status_code,
-            "detail": exc.detail,
-        },
+        content=ErrorResponse(
+            error=exc.detail or "An error occurred",
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ).model_dump(exclude_unset=True, by_alias=True),
         headers=exc.headers if hasattr(exc, "headers") and exc.headers else None,
     )
 
@@ -110,23 +111,23 @@ async def validation_exception_handler(
         error_messages.append(f"{field}: {message}")
         
         # Add structured message
-        messages.append({
-            "field": field,
-            "message": message,
-            "type": error_type,
-            "location": list(error["loc"]),
-        })
+        messages.append(ValidationErrorDetail(
+            field=field,
+            message=message,
+            type=error_type,
+            location=list(error["loc"]),
+        ))
 
     detail = "; ".join(error_messages) if error_messages else "Validation error"
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": "An error occurred while processing the request.",
-            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "detail": detail,
-            "messages": messages,
-        },
+        content=ErrorResponse(
+            error="An error occurred while processing the request.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
+            messages=messages
+        ).model_dump(exclude_unset=True, by_alias=True)
     )
 
 
@@ -146,11 +147,11 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": "Internal server error",
-            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "detail": detail,
-        },
+        content=ErrorResponse(
+            error="Internal server error",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail,
+        ).model_dump(exclude_unset=True, by_alias=True)
     )
 
 # CORS middleware

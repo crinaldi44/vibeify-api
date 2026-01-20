@@ -4,6 +4,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from vibeify_api.core.dependencies import get_current_user
+from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.core.security import create_access_token, get_password_hash, verify_password
 from vibeify_api.core.config import get_settings
 from vibeify_api.models.user import User
@@ -11,10 +12,10 @@ from vibeify_api.schemas.auth import Token, UserLogin, UserRegister, UserRespons
 from vibeify_api.services.user import UserService
 
 settings = get_settings()
-router = APIRouter(prefix="", tags=["auth"])
+router = APIRouter(prefix="", tags=["Auth"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", responses=ERROR_RESPONSES, response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserRegister,
 ) -> UserResponse:
@@ -33,7 +34,7 @@ async def register(
     return await user_service.register_user(user_data)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", responses=ERROR_RESPONSES, response_model=Token)
 async def login(
     user_data: UserLogin,
 ) -> Token:
@@ -52,7 +53,7 @@ async def login(
     return await user_service.login_user(user_data)
 
 
-@router.get("/profile", response_model=UserResponse)
+@router.get("/profile", responses=ERROR_RESPONSES, response_model=UserResponse)
 async def get_user_profile(
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:

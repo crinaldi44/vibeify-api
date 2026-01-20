@@ -5,10 +5,12 @@ from fastapi import APIRouter, Depends, Query, status, Path
 from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.dependencies import get_current_user
+from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.schemas.auth import UserResponse
+from vibeify_api.schemas.responses import ListResponse
 from vibeify_api.services.user import UserService
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 def get_user_service() -> UserService:
@@ -19,7 +21,8 @@ def get_user_service() -> UserService:
 @router.get(
     "",
     summary="List users with pagination",
-    response_model=PaginatedResponse[UserResponse],
+    response_model=ListResponse[UserResponse],
+    responses=ERROR_RESPONSES,
     description="Get paginated list of users with QueryMate",
 )
 async def list_users(
@@ -27,7 +30,7 @@ async def list_users(
     service: UserService = Depends(get_user_service),
     q: Optional[str] = Query(None, description="Query"),
     current_user = Depends(get_current_user)
-) -> PaginatedResponse[UserResponse]:
+) -> ListResponse[UserResponse]:
     """List users with pagination metadata.
 
     Same query parameters as `/users` endpoint, but returns pagination info.
@@ -39,6 +42,7 @@ async def list_users(
 @router.patch(
     "/{id}",
     response_model=UserResponse,
+    responses=ERROR_RESPONSES,
     summary="Update user",
 )
 async def update_user(
@@ -64,6 +68,7 @@ async def update_user(
 @router.delete(
     "/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses=ERROR_RESPONSES,
     summary="Delete user",
 )
 async def delete_user(

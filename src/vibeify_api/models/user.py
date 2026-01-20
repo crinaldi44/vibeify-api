@@ -1,6 +1,8 @@
 """User model."""
 from typing import Optional, TYPE_CHECKING
 
+from pydantic import ConfigDict
+from pydantic.alias_generators import to_camel
 from sqlmodel import Field, Relationship
 
 from vibeify_api.models.base import BaseModel
@@ -24,3 +26,9 @@ class User(BaseModel, table=True):
     
     # Relationship
     role: Optional["Role"] = Relationship(back_populates="users")
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )

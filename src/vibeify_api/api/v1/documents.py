@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, Query, UploadFile, status
 from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.dependencies import get_current_user
+from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.models.user import User
 from vibeify_api.schemas.document import DocumentResponse, DocumentUploadResponse
+from vibeify_api.schemas.responses import ListResponse
 from vibeify_api.services.document import DocumentService
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/documents", tags=["Documents"])
 
 
 def get_document_service() -> DocumentService:
@@ -20,6 +22,7 @@ def get_document_service() -> DocumentService:
 @router.post(
     "/upload",
     status_code=status.HTTP_201_CREATED,
+    responses=ERROR_RESPONSES,
     summary="Create document record and get presigned upload URL",
 )
 async def create_upload(
@@ -65,14 +68,15 @@ async def create_upload(
 @router.get(
     "",
     summary="List documents with pagination",
-    response_model=PaginatedResponse[DocumentResponse],
+    response_model=ListResponse[DocumentResponse],
+    responses=ERROR_RESPONSES,
     description="Get paginated list of documents with QueryMate",
 )
 async def list_documents(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     service: DocumentService = Depends(get_document_service),
     q: Optional[str] = Query(None, description="Query"),
-) -> PaginatedResponse[DocumentResponse]:
+) -> ListResponse[DocumentResponse]:
     """List documents with pagination metadata.
     
     Query parameters (via QueryMate):
@@ -93,6 +97,7 @@ async def list_documents(
 
 @router.get(
     "/{document_id}/download-url",
+    responses=ERROR_RESPONSES,
     summary="Get presigned download URL for a document",
 )
 async def get_download_url(
