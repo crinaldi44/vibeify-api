@@ -7,6 +7,7 @@ from querymate import PaginatedResponse, Querymate
 from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.schemas.auth import UserResponse
+from vibeify_api.schemas.requests import ListQueryParams
 from vibeify_api.schemas.responses import ListResponse
 from vibeify_api.services.user import UserService
 
@@ -26,9 +27,8 @@ def get_user_service() -> UserService:
     description="Get paginated list of users with QueryMate",
 )
 async def list_users(
-    query: Querymate = Depends(Querymate.fastapi_dependency),
+    q: ListQueryParams = Query(description="Query"),
     service: UserService = Depends(get_user_service),
-    q: Optional[str] = Query(None, description="Query"),
     current_user = Depends(get_current_user)
 ) -> ListResponse[UserResponse]:
     """List users with pagination metadata.
@@ -36,7 +36,7 @@ async def list_users(
     Same query parameters as `/users` endpoint, but returns pagination info.
     Set `include_pagination=true` in query params.
     """
-    return await service.list(query)
+    return await service.list(q)
 
 
 @router.patch(

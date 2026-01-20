@@ -1,13 +1,12 @@
 """Document API routes."""
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, UploadFile, status
-from querymate import PaginatedResponse, Querymate
 
 from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.models.user import User
 from vibeify_api.schemas.document import DocumentResponse, DocumentUploadResponse
+from vibeify_api.schemas.requests import ListQueryParams
 from vibeify_api.schemas.responses import ListResponse
 from vibeify_api.services.document import DocumentService
 
@@ -73,9 +72,8 @@ async def create_upload(
     description="Get paginated list of documents with QueryMate",
 )
 async def list_documents(
-    query: Querymate = Depends(Querymate.fastapi_dependency),
+    q: ListQueryParams = Query(description="Query"),
     service: DocumentService = Depends(get_document_service),
-    q: Optional[str] = Query(None, description="Query"),
 ) -> ListResponse[DocumentResponse]:
     """List documents with pagination metadata.
     
@@ -92,7 +90,7 @@ async def list_documents(
     - GET /documents?filter[filename][like]=%.pdf
     - GET /documents?sort=-created_at,filename&limit=10
     """
-    return await service.list(query)
+    return await service.list(q)
 
 
 @router.get(

@@ -7,6 +7,7 @@ from querymate.core.querymate import Querymate
 from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.models.reports import Report
+from vibeify_api.schemas.requests import ListQueryParams
 from vibeify_api.schemas.responses import ListResponse
 from vibeify_api.services.reports import ReportService
 
@@ -19,9 +20,8 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
     responses=ERROR_RESPONSES,
     description="Get paginated list of reports with QueryMate",
 )
-async def list_users(
-    query: Querymate = Depends(Querymate.fastapi_dependency),
-    q: Optional[str] = Query(None, description="Query"),
+async def list_reports(
+    q: ListQueryParams = Query(description="Query"),
     current_user = Depends(get_current_user)
 ) -> ListResponse[Report]:
     """List users with pagination metadata.
@@ -30,4 +30,4 @@ async def list_users(
     Set `include_pagination=true` in query params.
     """
     service = ReportService()
-    return await service.list(query)
+    return await service.list(q)
