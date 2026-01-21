@@ -1,7 +1,9 @@
 """Custom exceptions for the application."""
 from fastapi import HTTPException, status
+from starlette.responses import JSONResponse
 
-from vibeify_api.schemas.errors import ErrorResponse
+from vibeify_api.core.logging import get_logger
+from vibeify_api.schemas.errors import ErrorResponse, ValidationErrorDetail
 
 
 class ServiceException(HTTPException):
@@ -143,3 +145,69 @@ ERROR_RESPONSES = {
         }
     }
 }
+
+logger = get_logger(__name__)
+
+async def http_exception_handler(request, exc):
+    """Handle HTTP exceptions with standardized error format.
+
+        Args:
+            request: FastAPI request object
+            exc: HTTPException instance
+
+        Returns:
+            JSONResponse with standardized error format
+        """
+    logger.debug(f"Unhandled exception: {exc}",
+                 extra={
+                     "path": request.url.path,
+                     "method": request.method,
+                 })
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(
+            error=exc.detail or "An error occurred",
+            status_code=exc.status_code,
+            detail=exc.detail,
+        ).model_dump(exclude_unset=True, by_alias=True),
+    )
+
+async def request_validation_exception_handler(request, exc):
+    """Handle request validation errors with standardized error format.
+
+    Args:
+        request: FastAPI request object
+        exc: RequestValidationError instance
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    errors = exc.errors()
+    error_messages = []
+    messages = []
+
+    for error in errors:
+        field = " -> ".join(str(loc) for loc in error["loc"])
+        message = error["msg"]
+        error_type = error.get("type", "validation_error")
+
+        error_messages.append(f"{field}: {message}")
+
+        messages.append(ValidationErrorDetail(
+            field=field,
+            message=message,
+            type=error_type,
+            location=list(error["loc"]),
+        ))
+
+    detail = "; ".join(error_messages) if error_messages else "Validation error"
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=ErrorResponse(
+            error="An error occurred while processing the request.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
+            messages=messages
+        ).model_dump(exclude_unset=True, by_alias=True)
+    )

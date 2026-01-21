@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from vibeify_api.api.v1.router import api_router
 from vibeify_api.core.config import get_settings
 from vibeify_api.core.database import close_db, init_db
-from vibeify_api.core.exceptions import ServiceException
+from vibeify_api.core.exceptions import ServiceException, request_validation_exception_handler
 from vibeify_api.core.logging import get_logger, setup_logging
-from vibeify_api.schemas.errors import ErrorResponse, ValidationErrorDetail
+from vibeify_api.schemas.errors import ErrorResponse
 
 settings = get_settings()
 
@@ -35,6 +35,38 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def secure_headers(request: Request, call_next):
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        detail = str(exc) if settings.DEBUG else "An unexpected error occurred."
+        logger.exception(detail)
+        response = JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=ErrorResponse(
+            error="Internal server error",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail,
+        ).model_dump(exclude_unset=True, by_alias=True)
+    )
+
+    response.headers.setdefault(
+        "Access-Control-Allow-Origin",
+        request.headers.get("origin", "")
+    )
+    response.headers.setdefault("Access-Control-Allow-Credentials", "true")
+
+    return response
 
 @app.exception_handler(ServiceException)
 async def service_exception_handler(request: Request, exc: ServiceException) -> JSONResponse:
@@ -54,114 +86,19 @@ async def service_exception_handler(request: Request, exc: ServiceException) -> 
             status_code=exc.status_code,
             detail=exc.detail,
         ).model_dump(exclude_unset=True, by_alias=True),
-        headers=exc.headers if hasattr(exc, "headers") and exc.headers else None,
     )
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    """Handle HTTP exceptions with standardized error format.
-
-    Args:
-        request: FastAPI request object
-        exc: HTTPException instance
-
-    Returns:
-        JSONResponse with standardized error format
-    """
-    logger.debug(f"Unhandled exception: {exc}",
-        extra={
-            "path": request.url.path,
-            "method": request.method,
-        })
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            error=exc.detail or "An error occurred",
-            status_code=exc.status_code,
-            detail=exc.detail,
-        ).model_dump(exclude_unset=True, by_alias=True),
-        headers=exc.headers if hasattr(exc, "headers") and exc.headers else None,
-    )
+    return await http_exception_handler(request, exc)
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    """Handle request validation errors with standardized error format.
-
-    Args:
-        request: FastAPI request object
-        exc: RequestValidationError instance
-
-    Returns:
-        JSONResponse with standardized error format
-    """
-    errors = exc.errors()
-    error_messages = []
-    messages = []
-    
-    for error in errors:
-        field = " -> ".join(str(loc) for loc in error["loc"])
-        message = error["msg"]
-        error_type = error.get("type", "validation_error")
-        
-        # Add to detail string
-        error_messages.append(f"{field}: {message}")
-        
-        # Add structured message
-        messages.append(ValidationErrorDetail(
-            field=field,
-            message=message,
-            type=error_type,
-            location=list(error["loc"]),
-        ))
-
-    detail = "; ".join(error_messages) if error_messages else "Validation error"
-
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=ErrorResponse(
-            error="An error occurred while processing the request.",
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=detail,
-            messages=messages
-        ).model_dump(exclude_unset=True, by_alias=True)
-    )
-
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Handle unexpected exceptions with standardized error format.
-
-    Args:
-        request: FastAPI request object
-        exc: Exception instance
-
-    Returns:
-        JSONResponse with standardized error format
-    """
-    # Only show detailed error in debug mode
-    detail = str(exc) if settings.DEBUG else "An unexpected error occurred"
-
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=ErrorResponse(
-            error="Internal server error",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=detail,
-        ).model_dump(exclude_unset=True, by_alias=True)
-    )
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    return await request_validation_exception_handler(request, exc)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
