@@ -1,13 +1,12 @@
 """User API routes."""
-from typing import List, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status, Path
-from querymate import PaginatedResponse, Querymate
+from fastapi import APIRouter, Depends, Query, status
+from querymate import Querymate
 
 from vibeify_api.core.dependencies import get_current_user
 from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.schemas.auth import UserResponse
-from vibeify_api.schemas.requests import ListQueryParams
 from vibeify_api.schemas.responses import ListResponse
 from vibeify_api.services.user import UserService
 
@@ -27,16 +26,17 @@ def get_user_service() -> UserService:
     description="Get paginated list of users with QueryMate",
 )
 async def list_all(
-    q: ListQueryParams = Query(description="Query"),
+    query: Querymate = Depends(Querymate.fastapi_dependency),
+    q: Optional[str] = Query(None),
     service: UserService = Depends(get_user_service),
     current_user = Depends(get_current_user)
 ) -> ListResponse[UserResponse]:
     """List users with pagination metadata.
 
     Same query parameters as `/users` endpoint, but returns pagination info.
-    Set `include_pagination=true` in query params.
+    Set `includePagination=true` in query params.
     """
-    return await service.list(q)
+    return await service.list(query)
 
 
 @router.patch(
