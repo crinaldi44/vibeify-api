@@ -12,7 +12,7 @@ from vibeify_api.core.exceptions import (
 )
 from vibeify_api.core.security import create_access_token, get_password_hash, settings, verify_password
 from vibeify_api.models.user import User
-from vibeify_api.schemas.auth import Token, UserLogin, UserRegister, UserResponse
+from vibeify_api.schemas.auth import Token, UserLogin, UserRegister, UserResponse, RoleResponse
 from vibeify_api.services.base import BaseService
 from vibeify_api.services.role import RoleService
 
@@ -76,7 +76,7 @@ class UserService(BaseService[User]):
 
         return Token(access_token=access_token, token_type="bearer")
 
-    async def register_user(self, user_data: UserRegister) -> UserResponse:
+    async def register_user(self, user_data: UserRegister):
         """Register a new user.
 
         Args:
@@ -121,6 +121,4 @@ class UserService(BaseService[User]):
             )
         except ValueError as e:
             raise ValidationError(str(e)) from e
-
-        return UserResponse.model_validate(user_create)
 
