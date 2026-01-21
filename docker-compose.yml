@@ -200,15 +200,15 @@ services:
         done &&
         echo 'Fetching OpenAPI spec...' &&
         curl -f http://api:8000/openapi.json -o /tmp/openapi.json &&
-        echo 'Generating TypeScript client...' &&
-        openapi-generator-cli generate -i /tmp/openapi.json -g typescript-axios -o /app/downloads/typescript-client --additional-properties=supportsES6=true,npmName=vibeify-api-client,withInterfaces=true &&
-        echo 'TypeScript client generated successfully in downloads/typescript-client' &&
+        echo 'Generating JavaScript client...' &&
+        openapi-generator-cli generate -i /tmp/openapi.json -g javascript -o /app/downloads/javascript-client --additional-properties=supportsES6=true,npmName=vibeify-api-client &&
+        echo 'JavaScript client generated successfully in downloads/javascript-client' &&
         if [ \"$$TAR\" = \"1\" ]; then
           echo 'Installing dependencies and creating npm package...' &&
-          cd /app/downloads/typescript-client &&
+          cd /app/downloads/javascript-client &&
           npm install &&
           npm pack &&
-          echo 'npm package created in downloads/typescript-client/'
+          echo 'npm package created in downloads/javascript-client/'
         else
           echo 'TAR variable not set to 1, skipping npm pack'
         fi

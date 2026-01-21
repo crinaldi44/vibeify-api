@@ -103,24 +103,24 @@ class UserService(BaseService[User]):
 
         hashed_password = get_password_hash(user_data.password)
 
-        # Get default role (USER)
         role_service = RoleService()
-        default_role = await role_service.get_by_name("user")
+        default_role = await role_service.get_by_name("User")
         if not default_role:
             raise ValidationError("Default user role not found. Please ensure roles are initialized.")
 
         try:
-            user = await self.create(
-                User(
+            user_create = User(
                     email=user_data.email,
                     username=user_data.username,
                     full_name=user_data.full_name,
                     hashed_password=hashed_password,
                     role_id=default_role.id,
                 )
+            await self.create(
+                user_create
             )
         except ValueError as e:
             raise ValidationError(str(e)) from e
 
-        return UserResponse.model_validate(user)
+        return UserResponse.model_validate(user_create)
 
