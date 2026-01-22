@@ -42,10 +42,11 @@ async def get_review_item_assignment(
     )
 
 @router.post("", responses=ERROR_RESPONSES, status_code=status.HTTP_201_CREATED)
-async def register(
+async def create(
     review_item: ReviewItem,
+    current_user = Depends(authorization(RoleType.ADMIN))
 ):
-    """ Create a new review item.
+    """ Create a new review item. Only applicable to admin users.
 
     :param review_item:
     :return:
