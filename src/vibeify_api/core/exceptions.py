@@ -148,7 +148,7 @@ ERROR_RESPONSES = {
 
 logger = get_logger(__name__)
 
-async def http_exception_handler(request, exc):
+async def http_error_handler(request, exc):
     """Handle HTTP exceptions with standardized error format.
 
         Args:
@@ -158,7 +158,7 @@ async def http_exception_handler(request, exc):
         Returns:
             JSONResponse with standardized error format
         """
-    logger.debug(f"Unhandled exception: {exc}",
+    logger.debug(f"HTTP Exception: {exc}",
                  extra={
                      "path": request.url.path,
                      "method": request.method,
@@ -197,7 +197,7 @@ async def request_validation_exception_handler(request, exc):
             field=field,
             message=message,
             type=error_type,
-            location=list(error["loc"]),
+            location=[str(loc) for loc in error["loc"]],
         ))
 
     detail = "; ".join(error_messages) if error_messages else "Validation error"

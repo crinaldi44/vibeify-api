@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 from vibeify_api.core.context import get_current_user_from_context, require_current_user
 from vibeify_api.core.database import AsyncSessionLocal
 from vibeify_api.core.exceptions import NotFoundError
+from vibeify_api.core.logging import get_logger
 from vibeify_api.models.user import User
 from vibeify_api.repository.base import BaseRepository
 
@@ -27,6 +28,7 @@ class BaseService(Generic[ModelType]):
         """
         self.model = model
         self.repository = BaseRepository(model)
+        self._logger = get_logger(self.__class__.__name__)
 
     async def get(self, id: int) -> ModelType:
         """Get a single record by ID.

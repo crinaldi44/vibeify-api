@@ -1,7 +1,7 @@
 """Base repository for database operations."""
 from typing import Generic, TypeVar, Optional, Type, Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlmodel import SQLModel
 
 from vibeify_api.core.database import AsyncSessionLocal
@@ -166,3 +166,46 @@ class BaseRepository(Generic[ModelType]):
             query = select(self.model)
             result = await session.execute(query)
             return len(list(result.scalars().all()))
+
+    async def run_sql_statement(
+        self,
+        sql: str,
+        parameters: dict[str, Any] | None = None,
+        commit: bool = True,
+    ) -> Any:
+        """Execute parameterized SQL query.
+
+        Args:
+            sql: SQL query string with parameter placeholders (e.g., :param_name)
+            parameters: Dictionary of parameters to bind to the query
+            commit: Whether to commit the transaction (default: True)
+
+        Returns:
+            Result object from the query execution
+
+        Example:
+            # SELECT query
+            result = await repository.execute_sql(
+                "SELECT * FROM users WHERE id = :user_id",
+                parameters={"user_id": 1}
+            )
+            rows = result.fetchall()
+
+            # UPDATE query
+            result = await repository.execute_sql(
+                "UPDATE tasks SET status = :status WHERE user_id = :user_id",
+                parameters={"status": "completed", "user_id": 1}
+            )
+            # result.rowcount contains number of affected rows
+        """
+        async with AsyncSessionLocal() as session:
+            stmt = text(sql)
+            if parameters:
+                result = await session.execute(stmt, parameters)
+            else:
+                result = await session.execute(stmt)
+            
+            if commit:
+                await session.commit()
+            
+            return result

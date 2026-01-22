@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from vibeify_api.api.v1.router import api_router
 from vibeify_api.core.config import get_settings
 from vibeify_api.core.database import close_db, init_db
-from vibeify_api.core.exceptions import ServiceException, request_validation_exception_handler
+from vibeify_api.core.exceptions import ServiceException, http_error_handler, request_validation_exception_handler
 from vibeify_api.core.logging import get_logger, setup_logging
 from vibeify_api.schemas.errors import ErrorResponse
 
@@ -91,7 +91,7 @@ async def service_exception_handler(request: Request, exc: ServiceException) -> 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    return await http_exception_handler(request, exc)
+    return await http_error_handler(request, exc)
 
 
 @app.exception_handler(RequestValidationError)

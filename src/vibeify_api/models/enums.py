@@ -10,8 +10,8 @@ class NotificationType(str, Enum):
     DOCUMENT_UPLOAD = "upload-complete"
     REPORT_GENERATION = "report-generation"
 
-class TaskType(str, Enum):
-    GENERAL_TASK = "general"
+class ReviewItemType(str, Enum):
+    GENERAL = "general"
 
 class RoleType(str, Enum):
     USER = "User"

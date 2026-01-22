@@ -17,7 +17,7 @@ from vibeify_api.models.role import Role  # noqa: F401
 from vibeify_api.models.user import User  # noqa: F401
 from vibeify_api.models.reports import Report  # noqa: F401
 from vibeify_api.models.notification import Notification
-from vibeify_api.models.task import Task
+from vibeify_api.models.review_item import ReviewItem
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

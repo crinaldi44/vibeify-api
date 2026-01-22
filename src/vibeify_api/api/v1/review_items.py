@@ -1,0 +1,57 @@
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, Query
+from starlette import status
+from starlette.responses import Response
+
+from vibeify_api.core.dependencies import authorization
+from vibeify_api.core.exceptions import ERROR_RESPONSES
+from vibeify_api.models import User
+from vibeify_api.models.enums import RoleType, ReviewItemType
+from vibeify_api.models.review_item import ReviewItem
+from vibeify_api.services.review_items import ReviewItemsService
+
+router = APIRouter(prefix="/review-items", tags=["ReviewItems"])
+
+
+@router.get(
+    "",
+    summary="Get ReviewItem assignment",
+    response_model=List[ReviewItem],
+    responses=ERROR_RESPONSES,
+    description="Get paginated list of users with QueryMate",
+)
+async def get_review_item_assignment(
+    search_text: Optional[str] = Query(None, alias="searchText", description="Search text to filter on"),
+    offset: Optional[int] = Query(0, description="Offset for pagination"),
+    review_item_type: Optional[ReviewItemType] = Query(None, description="Task type to filter on", alias="reviewItemType"),
+    current_user: User = Depends(authorization()),
+) -> List[ReviewItem]:
+    """List users with pagination metadata.
+
+    Requires authentication (any authenticated user can access).
+
+    Same query parameters as `/users` endpoint, but returns pagination info.
+    Set `includePagination=true` in query params.
+    """
+    service = ReviewItemsService()
+    return await service.get_review_item_assignment(
+        search_text,
+        offset,
+        ReviewItemType(review_item_type) if review_item_type else None,
+    )
+
+@router.post("", responses=ERROR_RESPONSES, status_code=status.HTTP_201_CREATED)
+async def register(
+    review_item: ReviewItem,
+):
+    """ Create a new review item.
+
+    :param review_item:
+    :return:
+    """
+    review_item_service = ReviewItemsService()
+    await review_item_service.create(review_item)
+    return Response(
+        status_code=status.HTTP_201_CREATED
+    )
