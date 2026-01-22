@@ -20,6 +20,6 @@ class Document(BaseModel, table=True):
     file_size: int = Field(default=0, alias="fileSize")
     s3_key: str = Field(unique=True, index=True, max_length=500, alias="s3Key")
     s3_bucket: str = Field(max_length=100, alias="s3Bucket")
-    uploaded_by_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True, alias="uploadedById")
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True, alias="uploadedById")
     is_active: bool = Field(default=True, index=True, alias="isActive")
     document_type: DocumentType = Field(default=DocumentType.USER_UPLOAD, alias="documentType")
