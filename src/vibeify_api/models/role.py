@@ -4,6 +4,7 @@ from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, Relationship
 
 from vibeify_api.models.base import BaseModel
+from vibeify_api.models.enums import RoleType
 
 if TYPE_CHECKING:
     from vibeify_api.models.user import User

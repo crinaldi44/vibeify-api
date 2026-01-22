@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, UploadFile, status
 from querymate.core.querymate import Querymate
 
-from vibeify_api.core.dependencies import get_current_user
+from vibeify_api.core.dependencies import authorization
 from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.models.user import User
 from vibeify_api.schemas.document import DocumentResponse, DocumentUploadResponse
@@ -27,7 +27,7 @@ def get_document_service() -> DocumentService:
 )
 async def create_upload(
     file: UploadFile,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(authorization()),
     service: DocumentService = Depends(get_document_service),
 ) -> DocumentUploadResponse:
     """Create a document record and get a presigned URL for uploading to S3.
@@ -76,6 +76,7 @@ async def list_all(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     q: Optional[str] = Query(None),
     service: DocumentService = Depends(get_document_service),
+    current_user = Depends(authorization())
 ) -> ListResponse[DocumentResponse]:
     """List documents with pagination metadata.
     
@@ -103,6 +104,7 @@ async def list_all(
 async def get_download_url(
     document_id: int,
     service: DocumentService = Depends(get_document_service),
+    current_user = Depends(authorization())
 ) -> dict:
     """Get a presigned download URL for a specific document.
     

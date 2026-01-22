@@ -12,3 +12,7 @@ class NotificationType(str, Enum):
 
 class TaskType(str, Enum):
     GENERAL_TASK = "general"
+
+class RoleType(str, Enum):
+    USER = "User"
+    ADMIN = "Administrator"

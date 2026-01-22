@@ -11,6 +11,7 @@ from vibeify_api.core.exceptions import (
     ValidationError,
 )
 from vibeify_api.core.security import create_access_token, get_password_hash, settings, verify_password
+from vibeify_api.models.enums import RoleType
 from vibeify_api.models.user import User
 from vibeify_api.schemas.auth import Token, UserLogin, UserRegister, UserResponse, RoleResponse
 from vibeify_api.services.base import BaseService
@@ -104,7 +105,7 @@ class UserService(BaseService[User]):
         hashed_password = get_password_hash(user_data.password)
 
         role_service = RoleService()
-        default_role = await role_service.get_by_name("User")
+        default_role = await role_service.get_by_name(RoleType.USER.value)
         if not default_role:
             raise ValidationError("Default user role not found. Please ensure roles are initialized.")
 

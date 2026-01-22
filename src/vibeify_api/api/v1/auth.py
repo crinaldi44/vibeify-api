@@ -1,11 +1,9 @@
 """Authentication API routes."""
-from datetime import timedelta
+from fastapi import APIRouter, Depends, status
+from starlette.responses import Response
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
-from vibeify_api.core.dependencies import get_current_user
+from vibeify_api.core.dependencies import authorization
 from vibeify_api.core.exceptions import ERROR_RESPONSES
-from vibeify_api.core.security import create_access_token, get_password_hash, verify_password
 from vibeify_api.core.config import get_settings
 from vibeify_api.models.user import User
 from vibeify_api.schemas.auth import Token, UserLogin, UserRegister, UserResponse
@@ -32,6 +30,9 @@ async def register(
     """
     user_service = UserService()
     await user_service.register_user(user_data)
+    return Response(
+        status_code=status.HTTP_201_CREATED
+    )
 
 
 @router.post("/login", responses=ERROR_RESPONSES, response_model=Token)
@@ -55,7 +56,7 @@ async def login(
 
 @router.get("/profile", responses=ERROR_RESPONSES, response_model=UserResponse)
 async def get_user_profile(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(authorization()),
 ) -> UserResponse:
     """Get current authenticated user information.
 
