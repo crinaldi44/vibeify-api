@@ -140,11 +140,8 @@ def authorization(*required_roles: Union[RoleType, str]):
             ]
             
             if user.role.name not in role_names:
-                raise AuthorizationError(
-                    f"Access denied. Required one of: {', '.join(role_names)}, "
-                    f"User role: {user.role.name}"
-                )
-        
+                raise AuthorizationError()
+
         return user
     
     return auth_and_role_checker

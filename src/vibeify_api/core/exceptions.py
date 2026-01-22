@@ -45,7 +45,7 @@ class AuthenticationError(ServiceException):
 class AuthorizationError(ServiceException):
     """Raised when authorization fails."""
     
-    def __init__(self, detail: str = "Insufficient permissions"):
+    def __init__(self, detail: str = "Access to the requested resource is forbidden."):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=detail,

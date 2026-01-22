@@ -31,7 +31,7 @@ async def list_all(
     query: Querymate = Depends(Querymate.fastapi_dependency),
     q: Optional[str] = Query(None),
     service: UserService = Depends(get_user_service),
-    current_user: User = Depends(authorization()),
+    current_user: User = Depends(authorization(RoleType.ADMIN)),
 ) -> ListResponse[UserResponse]:
     """List users with pagination metadata.
     
