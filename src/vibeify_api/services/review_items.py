@@ -17,7 +17,8 @@ class ReviewItemsService(BaseService[ReviewItem]):
             self,
             search_text: str,
             offset: int,
-            review_item_type: ReviewItemType
+            review_item_type: ReviewItemType,
+            target_app: str
     ) -> List[ReviewItem]:
         """ Gets a task assignment for the current user. Unsets any existing
         locks on tasks, retrieves a single task and "locks" it to the current user
@@ -57,6 +58,9 @@ class ReviewItemsService(BaseService[ReviewItem]):
 
         if search_text is not None:
             query_filter["and"].append({"name": {"cont": search_text}})
+
+        if target_app is not None:
+            query_filter["and"].append({"target_app": {"eq": target_app}})
 
         new_review_item_assignment = await self.repository.query_raw(
                 query=Querymate(filter=query_filter,

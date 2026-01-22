@@ -19,12 +19,13 @@ router = APIRouter(prefix="/review-items", tags=["ReviewItems"])
     summary="Get ReviewItem assignment",
     response_model=List[ReviewItem],
     responses=ERROR_RESPONSES,
-    description="Get paginated list of users with QueryMate",
+    description="Get review item assignment.",
 )
 async def get_review_item_assignment(
     search_text: Optional[str] = Query(None, alias="searchText", description="Search text to filter on"),
     offset: Optional[int] = Query(0, description="Offset for pagination"),
     review_item_type: Optional[ReviewItemType] = Query(None, description="Task type to filter on", alias="reviewItemType"),
+    target_app: Optional[str] = Query(None, description="Target app to filter on", alias="targetApp"),
     current_user: User = Depends(authorization()),
 ) -> List[ReviewItem]:
     """List users with pagination metadata.
