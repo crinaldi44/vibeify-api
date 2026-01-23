@@ -40,6 +40,7 @@ async def get_review_item_assignment(
         search_text,
         offset,
         ReviewItemType(review_item_type) if review_item_type else None,
+        target_app
     )
 
 @router.post("", responses=ERROR_RESPONSES, status_code=status.HTTP_201_CREATED)
