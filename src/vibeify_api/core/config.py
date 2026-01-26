@@ -1,5 +1,6 @@
 """Application configuration settings."""
 from functools import lru_cache
+from re import S
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
     # API Settings
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "Vibeify API"
+    PROJECT_DESCRIPTION: str = "Contains services for data discovery, extraction, and enrichment."
     VERSION: str = "0.1.0"
     DEBUG: bool = False
 

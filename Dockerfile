@@ -16,6 +16,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # System dependencies
 RUN apt-get update && apt-get install -y \
+    ca-certificates \
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*

@@ -8,10 +8,11 @@ import io
 import json
 from datetime import datetime
 import urllib.parse
+import urllib.error
 import urllib.request
 import ssl
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Literal
 from urllib.parse import urlparse
 
 from sqlalchemy import select
@@ -55,8 +56,24 @@ class CrawledPageService(BaseService[CrawledPage]):
         timeout_seconds: int,
         ssl_context: ssl.SSLContext,
     ) -> bytes:
-        with urllib.request.urlopen(req, timeout=timeout_seconds, context=ssl_context) as resp:
-            return resp.read()
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_seconds, context=ssl_context) as resp:
+                return resp.read()
+        except urllib.error.HTTPError as e:
+            # HTTPError is also a URLError; capture body for better debugging.
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            detail = f"HTTP Error {getattr(e, 'code', 'unknown')}: {getattr(e, 'reason', '')}".strip()
+            if body and body.strip():
+                detail = f"{detail} - {body.strip()}"
+            raise RuntimeError(f"Failed to fetch {req.full_url}: {detail}") from e
+        except urllib.error.URLError as e:
+            # URLError subclasses OSError; wrap so Celery logs a useful message.
+            raise RuntimeError(f"Failed to fetch {req.full_url}: {e}") from e
+        except OSError as e:
+            raise RuntimeError(f"Network error fetching {req.full_url}: {e}") from e
 
     async def _fetch_bytes(
         self,
@@ -71,6 +88,19 @@ class CrawledPageService(BaseService[CrawledPage]):
             timeout_seconds=timeout_seconds,
             ssl_context=ssl_context,
         )
+
+    @staticmethod
+    def _validate_exact_url(url: str) -> None:
+        # This service fetches a single *exact* URL from the CDX index.
+        # Wildcards/patterns like "https://example.com/*" are not supported here.
+        if "*" in url:
+            raise ValueError(
+                f"Wildcard URLs are not supported for single-page crawl: {url}. "
+                "Provide concrete page URLs (e.g. https://www.nike.com/w/...)"
+            )
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError(f"Invalid URL (must be absolute http/https): {url}")
 
     @staticmethod
     def _cdx_endpoint(crawl: str) -> str:
@@ -114,6 +144,269 @@ class CrawledPageService(BaseService[CrawledPage]):
             warc_offset=int(offset),
             warc_length=int(length),
             digest=obj.get("digest"),
+        )
+
+    async def discover_common_crawl_hits(
+        self,
+        *,
+        seed_url: str,
+        crawl: str,
+        match_type: Literal["exact", "prefix", "host", "domain"] = "prefix",
+        max_urls: int = 500,
+        page_size: int = 1000,
+        timeout_seconds: int = 30,
+    ) -> list[dict]:
+        """
+        Discover many URLs + WARC pointers from the Common Crawl index.
+
+        Returns a list of dicts with:
+          url, warc_filename, warc_offset, warc_length, digest
+
+        This enables "central URL" discovery (eg ``https://www.nike.com/*``)
+        without doing a second per-URL CDX lookup.
+        """
+        if max_urls <= 0:
+            return []
+
+        seed = (seed_url or "").strip()
+        if not seed:
+            return []
+
+        # Normalize wildcard shorthands (pywb-style).
+        effective_match_type: str = match_type
+        if seed.startswith("*."):
+            effective_match_type = "domain"
+            seed = seed[2:]
+
+        if "*" in seed:
+            # Wildcards imply a prefix query *unless* the caller explicitly asked for host/domain.
+            # For host/domain queries, we ignore any path/wildcard and query by hostname only.
+            if effective_match_type not in {"host", "domain"}:
+                effective_match_type = "prefix"
+            seed = seed.replace("*", "")
+
+        url_pattern = seed
+        if effective_match_type in {"host", "domain"}:
+            # CDX host/domain matching is done by hostname; any path segment is ignored/unsupported.
+            # If we accidentally include "/..." (or "/*"), Common Crawl may treat it like a prefix
+            # wildcard query, which often yields no results for bare domains (eg "lego.com/*").
+            if "://" in url_pattern:
+                parsed = urlparse(url_pattern)
+                url_pattern = parsed.netloc or url_pattern
+            # Strip any path/query/fragment if present without scheme (eg "example.com/foo").
+            url_pattern = url_pattern.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0].strip()
+        elif effective_match_type == "prefix":
+            # Ensure a trailing wildcard for prefix queries.
+            if not url_pattern.endswith("/"):
+                url_pattern += "/"
+            url_pattern += "*"
+
+        ssl_context = self._build_ssl_context()
+        base = self._cdx_endpoint(crawl)
+
+        seen: set[str] = set()
+        out: list[dict] = []
+
+        # Common Crawl's `page`/`pageSize` follow PyWB ZipNum paging semantics:
+        # `pageSize` is the number of compressed index blocks, not "rows per page".
+        # To avoid HTTP 400 ("Page N invalid"), first ask for the page count.
+        num_pages = 1
+        try:
+            page_count_params = {
+                "url": url_pattern,
+                "matchType": effective_match_type,
+                "output": "json",
+                "collapse": "urlkey",
+                "filter": ["status:200", "mime:text/html"],
+                "pageSize": str(page_size),
+                "showNumPages": "true",
+            }
+            page_count_url = f"{base}?{urllib.parse.urlencode(page_count_params, doseq=True)}"
+            page_count_req = urllib.request.Request(page_count_url, headers={"User-Agent": "vibeify-commoncrawl/1.0"})
+            page_count_body = (
+                await self._fetch_bytes(page_count_req, timeout_seconds=timeout_seconds, ssl_context=ssl_context)
+            ).decode("utf-8", errors="replace")
+            try:
+                page_obj = json.loads(page_count_body.strip())
+                if isinstance(page_obj, dict) and "pages" in page_obj:
+                    num_pages = max(1, int(page_obj.get("pages") or 1))
+            except Exception:
+                # If parsing fails, fall back to a single page attempt.
+                num_pages = 1
+        except RuntimeError as e:
+            # Common Crawl index returns HTTP 404 when no matches exist.
+            if "HTTP Error 404" in str(e):
+                return []
+            # If the page-count query fails for any reason, fall back to a single page attempt.
+            num_pages = 1
+
+        for page in range(num_pages):
+            if len(out) >= max_urls:
+                break
+            params = {
+                "url": url_pattern,
+                "matchType": effective_match_type,
+                "output": "json",
+                "fl": "url,filename,offset,length,digest",
+                "collapse": "urlkey",
+                "filter": ["status:200", "mime:text/html"],
+                "pageSize": str(page_size),
+                "page": str(page),
+            }
+            req_url = f"{base}?{urllib.parse.urlencode(params, doseq=True)}"
+            req = urllib.request.Request(req_url, headers={"User-Agent": "vibeify-commoncrawl/1.0"})
+            try:
+                body = (await self._fetch_bytes(req, timeout_seconds=timeout_seconds, ssl_context=ssl_context)).decode(
+                    "utf-8",
+                    errors="replace",
+                )
+            except RuntimeError as e:
+                # Common Crawl index returns HTTP 404 when no matches exist.
+                if "HTTP Error 404" in str(e):
+                    break
+                # Page out of range or invalid paging params: treat as end of paging.
+                if "Page" in str(e) and "invalid" in str(e):
+                    break
+                raise
+
+            lines = [ln for ln in body.splitlines() if ln.strip()]
+            if not lines:
+                break
+
+            for ln in lines:
+                if len(out) >= max_urls:
+                    break
+                try:
+                    obj = json.loads(ln)
+                except json.JSONDecodeError:
+                    continue
+
+                url = obj.get("url")
+                filename = obj.get("filename")
+                offset = obj.get("offset")
+                length = obj.get("length")
+                if not (url and filename and offset is not None and length is not None):
+                    continue
+
+                url_str = str(url)
+                if url_str in seen:
+                    continue
+                seen.add(url_str)
+                out.append(
+                    {
+                        "url": url_str,
+                        "warc_filename": str(filename),
+                        "warc_offset": int(offset),
+                        "warc_length": int(length),
+                        "digest": obj.get("digest"),
+                    }
+                )
+
+        return out
+
+    async def discover_common_crawl_index_records(
+        self,
+        *,
+        seed_url: str,
+        crawl: str,
+        max_urls: int = 500,
+        timeout_seconds: int = 30,
+    ) -> list[dict]:
+        """
+        Fetch raw Common Crawl index (CDX) records for a URL/pattern.
+
+        This is intended to align 1:1 with calling:
+          https://index.commoncrawl.org/{crawl}-index?url={seed_url}&output=json
+
+        The returned dicts preserve Common Crawl's native keys (e.g. urlkey,
+        timestamp, url, status, digest, length, offset, filename, redirect, ...).
+        """
+        if max_urls <= 0:
+            return []
+
+        url_pattern = (seed_url or "").strip()
+        if not url_pattern:
+            return []
+
+        ssl_context = self._build_ssl_context()
+        base = self._cdx_endpoint(crawl)
+
+        params = {
+            "url": url_pattern,
+            "output": "json",
+        }
+        req_url = f"{base}?{urllib.parse.urlencode(params, doseq=True)}"
+        req = urllib.request.Request(req_url, headers={"User-Agent": "vibeify-commoncrawl/1.0"})
+
+        try:
+            body = (await self._fetch_bytes(req, timeout_seconds=timeout_seconds, ssl_context=ssl_context)).decode(
+                "utf-8",
+                errors="replace",
+            )
+        except RuntimeError as e:
+            # Common Crawl index returns HTTP 404 when no matches exist.
+            if "HTTP Error 404" in str(e):
+                return []
+            raise
+
+        out: list[dict] = []
+        for ln in body.splitlines():
+            if len(out) >= max_urls:
+                break
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                obj = json.loads(ln)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict):
+                out.append(obj)
+        return out
+
+    async def fetch_from_common_crawl_hit_and_persist(
+        self,
+        *,
+        url: str,
+        data_origin: str,
+        target_application: Optional[str],
+        user_id: Optional[int],
+        crawl: str,
+        warc_filename: str,
+        warc_offset: int,
+        warc_length: int,
+        digest: Optional[str] = None,
+        timeout_seconds: int = 30,
+    ) -> dict:
+        """Fetch HTML via a pre-resolved WARC record pointer (CDX hit) and persist it."""
+        self._validate_exact_url(url)
+        ssl_context = self._build_ssl_context()
+
+        existing = await self.get_by_url(
+            url=url,
+            data_origin=data_origin,
+            target_application=target_application,
+        )
+        if existing and digest and existing.content_digest == digest:
+            return CrawledPageResponse.model_validate(existing).model_dump(mode="json", by_alias=True)
+
+        hit = _CommonCrawlHit(
+            warc_filename=warc_filename,
+            warc_offset=warc_offset,
+            warc_length=warc_length,
+            digest=digest,
+        )
+        record = await self._fetch_warc_record(hit=hit, timeout_seconds=timeout_seconds, ssl_context=ssl_context)
+        html_bytes, content_type = self._extract_html_from_warc(record)
+        return await self.upload_and_persist_html(
+            url=url,
+            data_origin=data_origin,
+            target_application=target_application,
+            user_id=user_id,
+            html_bytes=html_bytes,
+            content_type=content_type,
+            content_digest=digest,
+            existing_id=existing.id if existing else None,
         )
 
     async def _fetch_warc_record(
@@ -210,6 +503,7 @@ class CrawledPageService(BaseService[CrawledPage]):
         """
         Fetch HTML for a URL from Common Crawl (CDX -> WARC) and persist it (S3 + DB).
         """
+        self._validate_exact_url(url)
         ssl_context = self._build_ssl_context()
         existing = await self.get_by_url(
             url=url,

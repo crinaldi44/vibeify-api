@@ -38,8 +38,8 @@ celery_app.conf.update(
 from celery.schedules import crontab
 
 celery_app.conf.beat_schedule = {
-    "run-example-task-every-5-min": {
+    "run-example-task-daily": {
         "task": "tasks.example.hello_world",
-        "schedule": timedelta(seconds=50),
+        "schedule": timedelta(days=1),
     },
 }
