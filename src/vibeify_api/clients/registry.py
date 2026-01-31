@@ -1,16 +1,21 @@
-"""Provider client registry utilities."""
+"""Provider service registry: returns provider services (each holds its client)."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
-from vibeify_api.clients.base import ProviderClient
 from vibeify_api.clients.serper import SerperClient
+from vibeify_api.schemas.discovery import ProviderDiscoveryRequest
+from vibeify_api.schemas.responses import ProviderDiscoveryResult
+from vibeify_api.services.serper import SerperService
 
 
-def default_provider_clients() -> dict[str, ProviderClient[Any]]:
-    """Default provider clients enabled in this service."""
+class ProviderServiceProtocol(Protocol):
+    async def search(self, request: ProviderDiscoveryRequest) -> ProviderDiscoveryResult: ...
+
+
+def default_provider_services() -> dict[str, ProviderServiceProtocol]:
     return {
-        SerperClient.provider: SerperClient(),
+        SerperClient.provider: SerperService(client=SerperClient()),
     }
 

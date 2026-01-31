@@ -1,7 +1,4 @@
-"""Provider clients.
-
-These clients call external providers (eg Serper) and return normalized results.
-"""
+"""Provider clients (repository-style): build request, perform HTTP call, return raw response."""
 
 __all__ = [
     "ProviderClient",

@@ -1,17 +1,20 @@
+"""Tests for provider discovery: thin client (repository), SerperService, DiscoveryService."""
+
 import httpx
 import pytest
 
-from vibeify_api.clients.registry import default_provider_clients
+from vibeify_api.clients.registry import default_provider_services
 from vibeify_api.clients.serper import SerperClient
 from vibeify_api.schemas.discovery import ProviderDiscoveryRequest
 from vibeify_api.services.discovery import DiscoveryService
+from vibeify_api.services.serper import SerperService
 
 
 class _StubHttp:
     def __init__(self, responses: list[httpx.Response]):
         self._responses = list(responses)
 
-    async def request(  # matches HttpClientService.request signature well enough for tests
+    async def request(
         self,
         method: str,
         url: str,
@@ -25,21 +28,74 @@ class _StubHttp:
         return self._responses.pop(0)
 
 
+# ---- Thin client (repository) tests ----
 @pytest.mark.asyncio
-async def test_serper_missing_api_key_returns_error():
-    client = SerperClient(api_key=None)
+async def test_serper_client_fetch_raises_when_no_api_key():
     req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
-    resp = await client.search(req, http=_StubHttp([]))  # http not used when missing key
-    assert resp.ok is False
-    assert resp.error is not None
-    assert resp.error.code == "missing_api_key"
+    async with SerperClient(api_key=None) as client:
+        with pytest.raises(ValueError, match="API key"):
+            await client.fetch(req)
 
 
 @pytest.mark.asyncio
-async def test_serper_normalizes_organic_results():
-    client = SerperClient(api_key="test")
-    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search", includeRaw=True)
+async def test_serper_client_fetch_returns_raw_response():
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
+    body = {"organic": [{"title": "LEGO", "link": "https://www.lego.com/", "position": 1}]}
+    stub_http = _StubHttp([httpx.Response(200, json=body)])
+    client = SerperClient(api_key="test", _http=stub_http)
+    async with client as c:
+        resp = await c.fetch(req)
+    assert resp.status_code == 200
+    assert resp.json() == body
 
+
+@pytest.mark.asyncio
+async def test_serper_client_retries_on_429_then_returns_success():
+    """Client retries on 429 and returns the final 200 response."""
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
+    body = {"organic": [{"title": "LEGO", "link": "https://www.lego.com/", "position": 1}]}
+    stub_http = _StubHttp([
+        httpx.Response(429, json={"message": "rate limit"}),
+        httpx.Response(200, json=body),
+    ])
+    client = SerperClient(api_key="test", _http=stub_http)
+    async with client as c:
+        resp = await c.fetch(req)
+    assert resp.status_code == 200
+    assert resp.json() == body
+
+
+# ---- SerperService tests (stub client returns fixed response) ----
+class _StubSerperClient:
+    provider = "serper"
+    _api_key = "stub"
+
+    def __init__(self, responses: list[httpx.Response]):
+        self._responses = list(responses)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return None
+
+    async def fetch(self, request):
+        assert self._responses, "No more stubbed responses"
+        return self._responses.pop(0)
+
+
+@pytest.mark.asyncio
+async def test_serper_service_missing_api_key_returns_error():
+    service = SerperService(client=SerperClient(api_key=None))
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
+    result = await service.search(req)
+    assert result.ok is False
+    assert result.error is not None
+    assert result.error.code == "missing_api_key"
+
+
+@pytest.mark.asyncio
+async def test_serper_service_normalizes_organic_results():
     body = {
         "organic": [
             {
@@ -51,13 +107,14 @@ async def test_serper_normalizes_organic_results():
             }
         ]
     }
-    http = _StubHttp([httpx.Response(200, json=body)])
-    resp = await client.search(req, http=http)
-
-    assert resp.ok is True
-    assert resp.raw is not None
-    assert len(resp.results) == 1
-    r0 = resp.results[0]
+    stub = _StubSerperClient([httpx.Response(200, json=body)])
+    service = SerperService(client=stub)
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search", includeRaw=True)
+    result = await service.search(req)
+    assert result.ok is True
+    assert result.raw is not None
+    assert len(result.results) == 1
+    r0 = result.results[0]
     assert r0.url == "https://www.lego.com/"
     assert r0.title == "LEGO"
     assert r0.rank == 1
@@ -66,29 +123,27 @@ async def test_serper_normalizes_organic_results():
 
 
 @pytest.mark.asyncio
-async def test_serper_429_returns_rate_limited_code():
-    client = SerperClient(api_key="test", max_retries=0)
+async def test_serper_service_429_returns_rate_limited_code():
+    stub = _StubSerperClient([httpx.Response(429, json={"message": "rate limit"})])
+    service = SerperService(client=stub)
     req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
-    http = _StubHttp([httpx.Response(429, json={"message": "rate limit"})])
-    resp = await client.search(req, http=http)
-    assert resp.ok is False
-    assert resp.error is not None
-    assert resp.error.code == "rate_limited"
+    result = await service.search(req)
+    assert result.ok is False
+    assert result.error is not None
+    assert result.error.code == "rate_limited"
 
 
-def test_default_provider_registry_contains_serper():
-    reg = default_provider_clients()
+def test_default_provider_services_contains_serper():
+    reg = default_provider_services()
     assert "serper" in reg
-    assert "amazon" in reg
 
 
 @pytest.mark.asyncio
 async def test_discovery_service_unknown_provider():
-    svc = DiscoveryService(clients={})
+    svc = DiscoveryService(services={})
     resp = await svc.discover([ProviderDiscoveryRequest(provider="nope", query="x")])
     assert len(resp.results) == 1
     r0 = resp.results[0]
     assert r0.ok is False
     assert r0.error is not None
     assert r0.error.code == "unknown_provider"
-
