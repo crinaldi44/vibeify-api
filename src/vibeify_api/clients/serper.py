@@ -11,10 +11,6 @@ import httpx
 
 from vibeify_api.clients.base import ProviderClient
 from vibeify_api.core.config import get_settings
-from vibeify_api.schemas.discovery import ProviderDiscoveryRequest
-
-_API_KEY_UNSET: Any = object()
-
 
 class SerperClient(ProviderClient):
     provider = "serper"

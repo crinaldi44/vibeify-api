@@ -134,7 +134,7 @@ class ProviderDiscoveryError(BaseModel):
 class ProviderDiscoveryRequest(BaseModel):
     """A single provider query request (eg Serper, Amazon, etc.)."""
 
-    provider: str = Field(default="serper", min_length=1, description="Provider identifier (eg 'serper').")
+    provider: str = Field(default="", min_length=1, description="Provider identifier (eg 'serper').")
     query: str = Field(min_length=1, description="Free-text query for the provider.")
 
     search_type: str = Field(
