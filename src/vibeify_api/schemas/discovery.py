@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import re
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
@@ -109,6 +111,71 @@ class DiscoveryRequest(BaseModel):
 
 class DiscoveryJobResponse(BaseModel):
     job_id: str
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class ProviderDiscoveryError(BaseModel):
+    code: str
+    message: str
+    details: Optional[str] = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class ProviderDiscoveryRequest(BaseModel):
+    """A single provider query request (eg Serper, Amazon, etc.)."""
+
+    provider: str = Field(default="serper", min_length=1, description="Provider identifier (eg 'serper').")
+    query: str = Field(min_length=1, description="Free-text query for the provider.")
+
+    # Generic options (providers may ignore unsupported fields)
+    search_type: str = Field(
+        default="search",
+        alias="type",
+        description="Provider search type (eg 'search', 'shopping', 'images', 'news', ...).",
+    )
+    country: Optional[str] = Field(default=None, description="Optional country code (eg 'us').")
+    language: Optional[str] = Field(default=None, description="Optional language code (eg 'en').")
+    num: int = Field(default=10, ge=1, le=100, description="Number of results to request when supported.")
+    page: Optional[int] = Field(default=None, ge=1, description="Optional 1-based page number when supported.")
+    site: Optional[str] = Field(default=None, description="Optional site/domain restriction (eg 'lego.com').")
+
+    include_raw: bool = Field(
+        default=False,
+        alias="includeRaw",
+        description="Whether to include the raw provider payload in the API response.",
+    )
+    options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Provider-specific options merged into the provider request.",
+    )
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class ProviderSearchResult(BaseModel):
+    """Normalized result item across providers."""
+
+    title: Optional[str] = None
+    url: str
+    snippet: Optional[str] = None
+    source: Optional[str] = None
+    rank: Optional[int] = None
+    result_type: str = Field(default="organic", alias="type")
+    extra: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
         alias_generator=to_camel,

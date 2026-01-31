@@ -49,6 +49,7 @@ app.add_middleware(
 async def secure_headers(request: Request, call_next):
     try:
         response = await call_next(request)
+        logger.info(f"{request.method} {request.url}")
     except Exception as exc:
         detail = str(exc) if settings.DEBUG else "An unexpected error occurred."
         logger.exception(detail)

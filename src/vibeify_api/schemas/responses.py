@@ -1,9 +1,13 @@
 """Error response schemas."""
-from typing import TypeVar
+from __future__ import annotations
 
-from pydantic import ConfigDict
+from typing import TypeVar, Optional, Any
+
+from pydantic import ConfigDict, BaseModel, Field
 from pydantic.alias_generators import to_camel
 from querymate import PaginatedResponse, PaginationInfo
+
+from vibeify_api.schemas.discovery import ProviderDiscoveryError, ProviderSearchResult
 
 T = TypeVar("T")
 
@@ -23,3 +27,30 @@ class ListResponse[T](PaginatedResponse[T]):
         populate_by_name=True,
         from_attributes=True
     )
+
+
+class ProviderDiscoveryResponse(BaseModel):
+    results: list[ProviderDiscoveryResult]
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class ProviderDiscoveryResult(BaseModel):
+    provider: str
+    query: str
+    ok: bool
+    results: list[ProviderSearchResult] = Field(default_factory=list)
+    raw: Optional[dict[str, Any]] = None
+    error: Optional[ProviderDiscoveryError] = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+

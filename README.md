@@ -66,6 +66,14 @@ A modern FastAPI application with async SQLAlchemy and PostgreSQL database suppo
    # Optional: Override broker and backend separately
    # CELERY_BROKER_URL=redis://localhost:6379/0
    # CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+   # Provider APIs (Serper)
+   # SERPER_API_KEY=your-serper-api-key
+   # SERPER_BASE_URL=https://google.serper.dev
+   # SERPER_TIMEOUT_SECONDS=15
+   # SERPER_MAX_CONCURRENCY=5
+   # SERPER_MIN_INTERVAL_SECONDS=0.0
+   # SERPER_MAX_RETRIES=2
    ```
 
 4. **Set up the database**
@@ -379,8 +387,16 @@ Key settings:
 - `GET /` - Root endpoint
 - `GET /health` - Health check
 - `GET /api/v1/` - API v1 root
+- `POST /api/v1/search` - Provider-based search (eg Serper) returning normalized results
+- `POST /api/v1/discovery` - CommonCrawl-based URL discovery + ingestion (async via Celery)
 
 Interactive API documentation is available at `/docs` when the server is running.
+
+### Provider-based search (`/api/v1/search`)
+
+This endpoint is synchronous and will call the configured provider (default: Serper).
+For large-scale ingestion, prefer a **batch/async workflow** (eg enqueue Celery jobs with per-task rate limits)
+to avoid tying up HTTP workers and to better control throughput.
 
 ## License
 

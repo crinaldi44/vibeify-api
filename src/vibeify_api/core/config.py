@@ -56,6 +56,13 @@ class Settings(BaseSettings):
         """Get Celery result backend URL."""
         return self.CELERY_RESULT_BACKEND or self.REDIS_URL
 
+    SERPER_API_KEY: Optional[str] = None
+    SERPER_BASE_URL: str = "https://google.serper.dev"
+    SERPER_TIMEOUT_SECONDS: float = 15.0
+    SERPER_MAX_CONCURRENCY: int = 5
+    SERPER_MIN_INTERVAL_SECONDS: float = 0.0
+    SERPER_MAX_RETRIES: int = 2
+
     AWS_ACCESS_KEY_ID: Optional[str] = None
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_REGION: str = "us-east-1"
