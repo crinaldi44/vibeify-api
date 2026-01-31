@@ -41,10 +41,7 @@ class ProviderDiscoveryResponse(BaseModel):
 
 class ProviderDiscoveryResult(BaseModel):
     provider: str
-    query: str
-    ok: bool
     results: list[ProviderSearchResult] = Field(default_factory=list)
-    raw: Optional[dict[str, Any]] = None
     error: Optional[ProviderDiscoveryError] = None
 
     model_config = ConfigDict(

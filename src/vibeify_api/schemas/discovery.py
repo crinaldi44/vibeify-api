@@ -137,27 +137,13 @@ class ProviderDiscoveryRequest(BaseModel):
     provider: str = Field(default="serper", min_length=1, description="Provider identifier (eg 'serper').")
     query: str = Field(min_length=1, description="Free-text query for the provider.")
 
-    # Generic options (providers may ignore unsupported fields)
     search_type: str = Field(
         default="search",
         alias="type",
         description="Provider search type (eg 'search', 'shopping', 'images', 'news', ...).",
     )
-    country: Optional[str] = Field(default=None, description="Optional country code (eg 'us').")
-    language: Optional[str] = Field(default=None, description="Optional language code (eg 'en').")
     num: int = Field(default=10, ge=1, le=100, description="Number of results to request when supported.")
     page: Optional[int] = Field(default=None, ge=1, description="Optional 1-based page number when supported.")
-    site: Optional[str] = Field(default=None, description="Optional site/domain restriction (eg 'lego.com').")
-
-    include_raw: bool = Field(
-        default=False,
-        alias="includeRaw",
-        description="Whether to include the raw provider payload in the API response.",
-    )
-    options: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Provider-specific options merged into the provider request.",
-    )
 
     model_config = ConfigDict(
         alias_generator=to_camel,

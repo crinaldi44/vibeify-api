@@ -33,10 +33,7 @@ class DiscoveryService:
         if service is None:
             return ProviderDiscoveryResult(
                 provider=provider or request.provider,
-                query=request.query,
-                ok=False,
                 results=[],
-                raw=None,
                 error=ProviderDiscoveryError(
                     code="unknown_provider",
                     message=f"Unsupported provider '{provider}'",
@@ -48,10 +45,7 @@ class DiscoveryService:
             self._logger.exception("Provider discovery failed", extra={"provider": provider})
             return ProviderDiscoveryResult(
                 provider=provider,
-                query=request.query,
-                ok=False,
                 results=[],
-                raw=None,
                 error=ProviderDiscoveryError(code="provider_failed", message="Provider call failed", details=str(e)),
             )
 

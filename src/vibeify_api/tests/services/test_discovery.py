@@ -89,7 +89,6 @@ async def test_serper_service_missing_api_key_returns_error():
     service = SerperService(client=SerperClient(api_key=None))
     req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
     result = await service.search(req)
-    assert result.ok is False
     assert result.error is not None
     assert result.error.code == "missing_api_key"
 
@@ -109,10 +108,9 @@ async def test_serper_service_normalizes_organic_results():
     }
     stub = _StubSerperClient([httpx.Response(200, json=body)])
     service = SerperService(client=stub)
-    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search", includeRaw=True)
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
     result = await service.search(req)
-    assert result.ok is True
-    assert result.raw is not None
+    assert result.error is None
     assert len(result.results) == 1
     r0 = result.results[0]
     assert r0.url == "https://www.lego.com/"
@@ -128,7 +126,6 @@ async def test_serper_service_429_returns_rate_limited_code():
     service = SerperService(client=stub)
     req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
     result = await service.search(req)
-    assert result.ok is False
     assert result.error is not None
     assert result.error.code == "rate_limited"
 
@@ -144,6 +141,5 @@ async def test_discovery_service_unknown_provider():
     resp = await svc.discover([ProviderDiscoveryRequest(provider="nope", query="x")])
     assert len(resp.results) == 1
     r0 = resp.results[0]
-    assert r0.ok is False
     assert r0.error is not None
     assert r0.error.code == "unknown_provider"

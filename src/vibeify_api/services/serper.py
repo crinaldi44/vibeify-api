@@ -76,23 +76,11 @@ def _normalize_serper_results(body: dict[str, Any], *, preferred_bucket: str) ->
 class SerperService:
     """Provider service for Serper: normalization and error mapping. Client owns retries."""
 
-    def __init__(self, *, client: Optional[SerperClient] = None) -> None:
-        self._client = client or SerperClient()
+    def __init__(self) -> None:
+        self._client = SerperClient()
 
     async def search(self, request: ProviderDiscoveryRequest) -> ProviderDiscoveryResult:
         """Call Serper (client retries), normalize response, return ProviderDiscoveryResult."""
-        if not getattr(self._client, "_api_key", None):
-            return ProviderDiscoveryResult(
-                provider=self._client.provider,
-                query=request.query,
-                ok=False,
-                results=[],
-                raw=None,
-                error=ProviderDiscoveryError(
-                    code="missing_api_key",
-                    message="Serper API key not configured (set SERPER_API_KEY).",
-                ),
-            )
 
         search_type = (request.search_type or "search").strip().lower()
         endpoint = search_type if search_type else "search"
@@ -104,20 +92,14 @@ class SerperService:
                 if "API key" in str(e):
                     return ProviderDiscoveryResult(
                         provider=self._client.provider,
-                        query=request.query,
-                        ok=False,
                         results=[],
-                        raw=None,
                         error=ProviderDiscoveryError(code="missing_api_key", message=str(e)),
                     )
                 raise
             except httpx.TimeoutException as e:
                 return ProviderDiscoveryResult(
                     provider=self._client.provider,
-                    query=request.query,
-                    ok=False,
                     results=[],
-                    raw=None,
                     error=ProviderDiscoveryError(
                         code="timeout",
                         message="Request timed out",
@@ -127,10 +109,7 @@ class SerperService:
             except httpx.HTTPError as e:
                 return ProviderDiscoveryResult(
                     provider=self._client.provider,
-                    query=request.query,
-                    ok=False,
                     results=[],
-                    raw=None,
                     error=ProviderDiscoveryError(
                         code="http_error",
                         message="HTTP request failed",
@@ -143,20 +122,14 @@ class SerperService:
                 results = _normalize_serper_results(body, preferred_bucket=endpoint)
                 return ProviderDiscoveryResult(
                     provider=self._client.provider,
-                    query=request.query,
-                    ok=True,
                     results=results,
-                    raw=body if request.include_raw else None,
                     error=None,
                 )
 
             if resp.status_code in (401, 403):
                 return ProviderDiscoveryResult(
                     provider=self._client.provider,
-                    query=request.query,
-                    ok=False,
                     results=[],
-                    raw=None,
                     error=ProviderDiscoveryError(
                         code="auth_error",
                         message="Serper authentication failed.",
@@ -167,10 +140,7 @@ class SerperService:
             if resp.status_code == 429:
                 return ProviderDiscoveryResult(
                     provider=self._client.provider,
-                    query=request.query,
-                    ok=False,
                     results=[],
-                    raw=None,
                     error=ProviderDiscoveryError(
                         code="rate_limited",
                         message="Serper rate limit exceeded.",
@@ -181,10 +151,7 @@ class SerperService:
             if 500 <= resp.status_code < 600:
                 return ProviderDiscoveryResult(
                     provider=self._client.provider,
-                    query=request.query,
-                    ok=False,
                     results=[],
-                    raw=None,
                     error=ProviderDiscoveryError(
                         code="provider_error",
                         message=f"Serper request failed (status={resp.status_code}).",
@@ -194,10 +161,7 @@ class SerperService:
 
             return ProviderDiscoveryResult(
                 provider=self._client.provider,
-                query=request.query,
-                ok=False,
                 results=[],
-                raw=None,
                 error=ProviderDiscoveryError(
                     code="provider_error",
                     message=f"Serper request failed (status={resp.status_code}).",
