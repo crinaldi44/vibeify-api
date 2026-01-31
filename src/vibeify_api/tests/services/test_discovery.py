@@ -28,6 +28,31 @@ class _StubHttp:
         return self._responses.pop(0)
 
 
+class _RecordingStubHttp(_StubHttp):
+    """Stub that records the last request for assertion."""
+
+    def __init__(self, responses: list[httpx.Response]):
+        super().__init__(responses)
+        self.last_method: str | None = None
+        self.last_url: str | None = None
+        self.last_json: dict | None = None
+
+    async def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params=None,
+        headers=None,
+        json=None,
+        data=None,
+    ) -> httpx.Response:
+        self.last_method = method
+        self.last_url = url
+        self.last_json = json
+        return await super().request(method, url, params=params, headers=headers, json=json, data=data)
+
+
 # ---- Thin client (repository) tests ----
 @pytest.mark.asyncio
 async def test_serper_client_fetch_raises_when_no_api_key():
@@ -63,6 +88,41 @@ async def test_serper_client_retries_on_429_then_returns_success():
         resp = await c.fetch(req)
     assert resp.status_code == 200
     assert resp.json() == body
+
+
+@pytest.mark.asyncio
+async def test_serper_client_fetch_raw_matches_fetch_for_same_request():
+    """fetch_raw with equivalent url+payload returns same response as fetch(request)."""
+    body = {"organic": [{"title": "LEGO", "link": "https://www.lego.com/", "position": 1}]}
+    recording_stub = _RecordingStubHttp([
+        httpx.Response(200, json=body),
+        httpx.Response(200, json=body),
+    ])
+    client = SerperClient(api_key="test", base_url="https://google.serper.dev", _http=recording_stub)
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search", num=10)
+
+    async with client as c:
+        resp_fetch = await c.fetch(req)
+
+    url = "https://google.serper.dev/search"
+    payload = {"q": "lego", "num": 10}
+    async with SerperClient(api_key="test", base_url="https://google.serper.dev", _http=recording_stub) as c:
+        resp_raw = await c.execute_request("POST", url, json=payload)
+
+    assert resp_fetch.status_code == 200
+    assert resp_raw.status_code == 200
+    assert resp_fetch.json() == resp_raw.json() == body
+    assert recording_stub.last_url == url
+    assert recording_stub.last_json == payload
+
+
+@pytest.mark.asyncio
+async def test_serper_client_fetch_raw_raises_when_no_api_key():
+    """fetch_raw raises ValueError when API key is not configured."""
+    client = SerperClient(api_key=None)
+    async with client as c:
+        with pytest.raises(ValueError, match="API key"):
+            await c.execute_request("POST", "https://google.serper.dev/search", json={"q": "lego"})
 
 
 # ---- SerperService tests (stub client returns fixed response) ----
@@ -128,6 +188,17 @@ async def test_serper_service_429_returns_rate_limited_code():
     result = await service.search(req)
     assert result.error is not None
     assert result.error.code == "rate_limited"
+
+
+@pytest.mark.asyncio
+async def test_serper_service_401_returns_auth_error():
+    """_execute_fetch returns ProviderDiscoveryResult with auth_error for 401."""
+    stub = _StubSerperClient([httpx.Response(401, json={"message": "Unauthorized"})])
+    service = SerperService(client=stub)
+    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
+    result = await service.search(req)
+    assert result.error is not None
+    assert result.error.code == "auth_error"
 
 
 def test_default_provider_services_contains_serper():

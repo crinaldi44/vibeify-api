@@ -36,7 +36,6 @@ def crawl_page(
             ),
         )
     except Exception:
-        # Celery sometimes logs OSError/URLError without useful context; log it ourselves.
         logger.exception(
             "Discovery crawl failed",
             extra={

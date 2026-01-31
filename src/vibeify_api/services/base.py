@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from typing import Generic, List, TypeVar, Optional, Type, Any
 
 import httpx
@@ -208,26 +209,15 @@ class BaseDiscoveryService(ABC):
             error=ProviderDiscoveryError(code=code, message=message, details=details),
         )
 
-    @abstractmethod
-    async def _normalize_success(
+    async def _execute_fetch(
         self,
-        resp: httpx.Response,
-        request: ProviderDiscoveryRequest,
+        coro: Callable[[], Awaitable[httpx.Response]],
+        normalizer: Callable[[httpx.Response], Awaitable[ProviderDiscoveryResult]],
     ) -> ProviderDiscoveryResult:
-        """Turn a 2xx response into ProviderDiscoveryResult. Subclasses implement."""
-        ...
-
-    async def search(self, request: ProviderDiscoveryRequest) -> ProviderDiscoveryResult:
-        """Run provider search; handle all errors in base, delegate 2xx to _normalize_success."""
-        if self._is_missing_api_key():
-            return self._error_result(
-                "missing_api_key",
-                "API key not configured.",
-            )
-
-        async with self._client as c:
+        """Run fetch coroutine; on 2xx call normalizer(resp), on error return ProviderDiscoveryResult."""
+        async with self._client:
             try:
-                resp = await c.fetch(request)
+                resp = await coro()
             except ValueError as e:
                 if "API key" in str(e):
                     return self._error_result("missing_api_key", str(e))
@@ -238,7 +228,7 @@ class BaseDiscoveryService(ABC):
                 return self._error_result("http_error", "HTTP request failed", str(e))
 
             if 200 <= resp.status_code < 300:
-                return await self._normalize_success(resp, request)
+                return await normalizer(resp)
 
             if resp.status_code in (401, 403):
                 return self._error_result(

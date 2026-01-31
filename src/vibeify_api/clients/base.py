@@ -51,7 +51,9 @@ class ProviderClient:
             await self._http.aclose()
             self._http_owned = False
 
-    async def fetch(self, request: ProviderDiscoveryRequest) -> httpx.Response:
+    async def execute_request(
+        self, method: str, url: str, *, json: dict[str, Any] | None = None, **kwargs: Any
+    ) -> httpx.Response:
         """Perform the HTTP call and return the raw response. May raise httpx exceptions."""
         raise NotImplementedError("Method not implemented.")
 

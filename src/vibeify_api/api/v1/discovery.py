@@ -17,17 +17,6 @@ from vibeify_api.tasks.orchestrators.discovery import orchestrate_discovery
 
 router = APIRouter(prefix="/discovery", tags=["Discovery"])
 
-@router.post(
-    "/plan",
-    status_code=status.HTTP_200_OK,
-    responses=ERROR_RESPONSES,
-    summary="Validates discovery request and returns a plan for the discovery process containing urls to retrieve."
-)
-async def validate_discovery(
-    request: DiscoveryRequest
-) -> None:
-    pass
-
 
 @router.post(
     "",
@@ -54,9 +43,18 @@ async def start_discovery(
     return DiscoveryJobResponse(job_id=result.id)
 
 @router.post(
-    "/provider-search",
+    "/offers/search",
     status_code=status.HTTP_200_OK,
-    summary="Search via an external provider and return normalized results.",
+    summary="Search offers via external providers and return normalized results.",
+)
+async def offer_discovery(requests: List[ProviderDiscoveryRequest]) -> ProviderDiscoveryResponse:
+    _service = DiscoveryService()
+    return await _service.discover(requests)
+
+@router.post(
+    "/offers/enrichment",
+    status_code=status.HTTP_200_OK,
+    summary="Retrieve specific normalized details from providers.",
 )
 async def search(requests: List[ProviderDiscoveryRequest]) -> ProviderDiscoveryResponse:
     _service = DiscoveryService()
