@@ -1,6 +1,10 @@
 """Base service for business logic layer."""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 from typing import Generic, List, TypeVar, Optional, Type, Any
 
+import httpx
 from querymate import Querymate
 from sqlmodel import SQLModel
 
@@ -10,6 +14,8 @@ from vibeify_api.core.exceptions import NotFoundError
 from vibeify_api.core.logging import get_logger
 from vibeify_api.models.user import User
 from vibeify_api.repository.base import BaseRepository
+from vibeify_api.schemas.discovery import ProviderDiscoveryError, ProviderDiscoveryRequest
+from vibeify_api.schemas.responses import ProviderDiscoveryResult
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 
@@ -167,3 +173,93 @@ class BaseService(Generic[ModelType]):
             AuthenticationError: If no user in context
         """
         return require_current_user()
+
+
+class BaseDiscoveryService(ABC):
+    """Base for provider discovery services. Owns error handling; subclasses implement success normalization."""
+
+    def __init__(self, *, client: Any) -> None:
+        """Initialize with a provider client (context manager with .provider and .fetch(request))."""
+        self._client = client
+
+    @staticmethod
+    def _safe_text(resp: httpx.Response) -> str:
+        """Return response body text for error details, capped at 2000 chars."""
+        try:
+            txt = resp.text or ""
+        except Exception:
+            return ""
+        return txt[:2000]
+
+    def _is_missing_api_key(self) -> bool:
+        """Return True if the client has no API key. Subclasses may override."""
+        return not getattr(self._client, "_api_key", None)
+
+    def _error_result(
+        self,
+        code: str,
+        message: str,
+        details: str | None = None,
+    ) -> ProviderDiscoveryResult:
+        """Build a failed ProviderDiscoveryResult."""
+        return ProviderDiscoveryResult(
+            provider=self._client.provider,
+            results=[],
+            error=ProviderDiscoveryError(code=code, message=message, details=details),
+        )
+
+    @abstractmethod
+    async def _normalize_success(
+        self,
+        resp: httpx.Response,
+        request: ProviderDiscoveryRequest,
+    ) -> ProviderDiscoveryResult:
+        """Turn a 2xx response into ProviderDiscoveryResult. Subclasses implement."""
+        ...
+
+    async def search(self, request: ProviderDiscoveryRequest) -> ProviderDiscoveryResult:
+        """Run provider search; handle all errors in base, delegate 2xx to _normalize_success."""
+        if self._is_missing_api_key():
+            return self._error_result(
+                "missing_api_key",
+                "API key not configured.",
+            )
+
+        async with self._client as c:
+            try:
+                resp = await c.fetch(request)
+            except ValueError as e:
+                if "API key" in str(e):
+                    return self._error_result("missing_api_key", str(e))
+                raise
+            except httpx.TimeoutException as e:
+                return self._error_result("timeout", "Request timed out", str(e))
+            except httpx.HTTPError as e:
+                return self._error_result("http_error", "HTTP request failed", str(e))
+
+            if 200 <= resp.status_code < 300:
+                return await self._normalize_success(resp, request)
+
+            if resp.status_code in (401, 403):
+                return self._error_result(
+                    "auth_error",
+                    "Authentication failed.",
+                    self._safe_text(resp),
+                )
+            if resp.status_code == 429:
+                return self._error_result(
+                    "rate_limited",
+                    "Rate limit exceeded.",
+                    self._safe_text(resp),
+                )
+            if 500 <= resp.status_code < 600:
+                return self._error_result(
+                    "provider_error",
+                    f"Request failed (status={resp.status_code}).",
+                    self._safe_text(resp),
+                )
+            return self._error_result(
+                "provider_error",
+                f"Request failed (status={resp.status_code}).",
+                self._safe_text(resp),
+            )
