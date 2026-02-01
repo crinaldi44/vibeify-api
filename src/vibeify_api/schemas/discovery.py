@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import re
-from typing import Optional, Literal, Any
+from typing import Optional, Literal, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 from urllib.parse import urlparse
 
+from vibeify_api.schemas.enums import ProductIdentifierType
+
+ResultT = TypeVar("ResultT")
 
 class DiscoveryRequest(BaseModel):
     urls: list[str] = Field(
@@ -151,20 +154,80 @@ class ProviderDiscoveryRequest(BaseModel):
         from_attributes=True,
     )
 
-
-class ProviderSearchResult(BaseModel):
-    """Normalized result item across providers."""
-
-    title: Optional[str] = None
-    url: str
-    snippet: Optional[str] = None
-    source: Optional[str] = None
-    rank: Optional[int] = None
-    result_type: str = Field(default="organic", alias="type")
-    extra: dict[str, Any] = Field(default_factory=dict)
+class ProviderDiscoveryResult(BaseModel, Generic[ResultT]):
+    provider: str
+    results: list[ResultT] = Field(default_factory=list)
+    error: Optional[ProviderDiscoveryError] = None
 
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
         from_attributes=True,
     )
+
+
+class ProviderDiscoveryResponse(BaseModel, Generic[ResultT]):
+    results: list[ProviderDiscoveryResult[ResultT]]
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+class ProductIdentifierRecord(BaseModel):
+    name: str
+    value: str
+    identifier_type: ProductIdentifierType
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+class ProductOfferRecord(BaseModel):
+    normalized_price_cents: Optional[str]
+    normalized_currency: Optional[str]
+    source_price: Optional[str]
+    source_product_offer_url: str
+    source_description: Optional[str]
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+class ProductSpecificationRecord(BaseModel):
+    name: Optional[str]
+    value: Optional[str]
+
+class ProductDocument(BaseModel):
+    name: Optional[str]
+    url: Optional[str]
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+class ProductRecord(BaseModel):
+    name: str
+    source_category_paths: Optional[list[str]]
+    brand_record: Optional[BrandRecord]
+    description: Optional[str]
+    product_offer_records: Optional[list[ProductOfferRecord]] = []
+    product_identifier_records: Optional[list[ProductIdentifierRecord]] = []
+    data_source: str
+    source_product_url: Optional[str]
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+class BrandRecord(BaseModel):
+    name: str

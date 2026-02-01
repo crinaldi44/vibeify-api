@@ -12,20 +12,29 @@ import httpx
 from vibeify_api.clients.base import ProviderClient
 from vibeify_api.core.config import get_settings
 
+_API_KEY_UNSET: Any = object()
+
+
 class SerperClient(ProviderClient):
     provider = "serper"
 
     def __init__(
         self,
         *,
+        api_key: Any = _API_KEY_UNSET,
+        base_url: str | None = None,
         _http: Any = None,
     ) -> None:
         settings = get_settings()
         timeout = settings.SERPER_TIMEOUT_SECONDS
         max_retries = settings.SERPER_MAX_RETRIES
         super().__init__(timeout_seconds=timeout, max_retries=max_retries, _http=_http)
-        self._api_key = settings.SERPER_API_KEY
-        self._base_url = settings.SERPER_BASE_URL
+        self._api_key = (
+            api_key if api_key is not _API_KEY_UNSET else settings.SERPER_API_KEY
+        )
+        self._base_url = (
+            (base_url or settings.SERPER_BASE_URL).rstrip("/")
+        )
 
     async def execute_request(
         self, method: str, url: str, *, json: dict[str, Any] | None = None, **kwargs: Any

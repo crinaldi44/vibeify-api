@@ -5,7 +5,7 @@ import pytest
 
 from vibeify_api.clients.registry import default_provider_services
 from vibeify_api.clients.serper import SerperClient
-from vibeify_api.schemas.discovery import ProviderDiscoveryRequest
+from vibeify_api.schemas.discovery import ProviderDiscoveryRequest, ProductOfferDiscoveryResult
 from vibeify_api.services.discovery import DiscoveryService
 from vibeify_api.services.serper import SerperService
 
@@ -55,21 +55,19 @@ class _RecordingStubHttp(_StubHttp):
 
 # ---- Thin client (repository) tests ----
 @pytest.mark.asyncio
-async def test_serper_client_fetch_raises_when_no_api_key():
-    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
+async def test_serper_client_execute_request_raises_when_no_api_key():
     async with SerperClient(api_key=None) as client:
         with pytest.raises(ValueError, match="API key"):
-            await client.fetch(req)
+            await client.execute_request("POST", "https://google.serper.dev/search", json={"q": "lego"})
 
 
 @pytest.mark.asyncio
-async def test_serper_client_fetch_returns_raw_response():
-    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
+async def test_serper_client_execute_request_returns_raw_response():
     body = {"organic": [{"title": "LEGO", "link": "https://www.lego.com/", "position": 1}]}
     stub_http = _StubHttp([httpx.Response(200, json=body)])
     client = SerperClient(api_key="test", _http=stub_http)
     async with client as c:
-        resp = await c.fetch(req)
+        resp = await c.execute_request("POST", "https://google.serper.dev/search", json={"q": "lego"})
     assert resp.status_code == 200
     assert resp.json() == body
 
@@ -77,7 +75,6 @@ async def test_serper_client_fetch_returns_raw_response():
 @pytest.mark.asyncio
 async def test_serper_client_retries_on_429_then_returns_success():
     """Client retries on 429 and returns the final 200 response."""
-    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search")
     body = {"organic": [{"title": "LEGO", "link": "https://www.lego.com/", "position": 1}]}
     stub_http = _StubHttp([
         httpx.Response(429, json={"message": "rate limit"}),
@@ -85,50 +82,31 @@ async def test_serper_client_retries_on_429_then_returns_success():
     ])
     client = SerperClient(api_key="test", _http=stub_http)
     async with client as c:
-        resp = await c.fetch(req)
+        resp = await c.execute_request("POST", "https://google.serper.dev/search", json={"q": "lego"})
     assert resp.status_code == 200
     assert resp.json() == body
 
 
 @pytest.mark.asyncio
-async def test_serper_client_fetch_raw_matches_fetch_for_same_request():
-    """fetch_raw with equivalent url+payload returns same response as fetch(request)."""
-    body = {"organic": [{"title": "LEGO", "link": "https://www.lego.com/", "position": 1}]}
-    recording_stub = _RecordingStubHttp([
-        httpx.Response(200, json=body),
-        httpx.Response(200, json=body),
-    ])
+async def test_serper_client_execute_request_sends_correct_url_and_payload():
+    """execute_request sends correct URL and JSON payload."""
+    body = {"organic": [{"link": "https://example.com/"}]}
+    recording_stub = _RecordingStubHttp([httpx.Response(200, json=body)])
     client = SerperClient(api_key="test", base_url="https://google.serper.dev", _http=recording_stub)
-    req = ProviderDiscoveryRequest(provider="serper", query="lego", type="search", num=10)
-
-    async with client as c:
-        resp_fetch = await c.fetch(req)
-
     url = "https://google.serper.dev/search"
-    payload = {"q": "lego", "num": 10}
-    async with SerperClient(api_key="test", base_url="https://google.serper.dev", _http=recording_stub) as c:
-        resp_raw = await c.execute_request("POST", url, json=payload)
-
-    assert resp_fetch.status_code == 200
-    assert resp_raw.status_code == 200
-    assert resp_fetch.json() == resp_raw.json() == body
+    payload = {"q": "lego", "engine": "ebay_product"}
+    async with client as c:
+        resp = await c.execute_request("POST", url, json=payload)
+    assert resp.status_code == 200
     assert recording_stub.last_url == url
     assert recording_stub.last_json == payload
-
-
-@pytest.mark.asyncio
-async def test_serper_client_fetch_raw_raises_when_no_api_key():
-    """fetch_raw raises ValueError when API key is not configured."""
-    client = SerperClient(api_key=None)
-    async with client as c:
-        with pytest.raises(ValueError, match="API key"):
-            await c.execute_request("POST", "https://google.serper.dev/search", json={"q": "lego"})
 
 
 # ---- SerperService tests (stub client returns fixed response) ----
 class _StubSerperClient:
     provider = "serper"
     _api_key = "stub"
+    _base_url = "https://google.serper.dev"
 
     def __init__(self, responses: list[httpx.Response]):
         self._responses = list(responses)
@@ -139,7 +117,7 @@ class _StubSerperClient:
     async def __aexit__(self, *args):
         return None
 
-    async def fetch(self, request):
+    async def execute_request(self, method: str, url: str, *, json: dict | None = None, **kwargs):
         assert self._responses, "No more stubbed responses"
         return self._responses.pop(0)
 
@@ -155,6 +133,7 @@ async def test_serper_service_missing_api_key_returns_error():
 
 @pytest.mark.asyncio
 async def test_serper_service_normalizes_organic_results():
+    """SerperService returns ProviderDiscoveryResult[SerperSearchResult] with url from organic items."""
     body = {
         "organic": [
             {
@@ -173,11 +152,8 @@ async def test_serper_service_normalizes_organic_results():
     assert result.error is None
     assert len(result.results) == 1
     r0 = result.results[0]
+    assert isinstance(r0, ProductOfferDiscoveryResult)
     assert r0.url == "https://www.lego.com/"
-    assert r0.title == "LEGO"
-    assert r0.rank == 1
-    assert r0.result_type == "organic"
-    assert "sitelinks" in r0.extra
 
 
 @pytest.mark.asyncio
@@ -209,7 +185,7 @@ def test_default_provider_services_contains_serper():
 @pytest.mark.asyncio
 async def test_discovery_service_unknown_provider():
     svc = DiscoveryService(services={})
-    resp = await svc.discover([ProviderDiscoveryRequest(provider="nope", query="x")])
+    resp = await svc.discover_offers([ProviderDiscoveryRequest(provider="nope", query="x")])
     assert len(resp.results) == 1
     r0 = resp.results[0]
     assert r0.error is not None

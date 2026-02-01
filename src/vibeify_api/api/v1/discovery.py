@@ -3,16 +3,14 @@
 Triggers a Celery orchestrator that enqueues per-URL crawl jobs.
 """
 
-from re import S
 from typing import List
 from fastapi import APIRouter, Depends, status
 
 from vibeify_api.core.dependencies import authorization
 from vibeify_api.core.exceptions import ERROR_RESPONSES
 from vibeify_api.models.user import User
-from vibeify_api.schemas.discovery import DiscoveryJobResponse, DiscoveryRequest, ProviderDiscoveryRequest
-from vibeify_api.schemas.responses import ProviderDiscoveryResponse, ProviderDiscoveryResult
-from vibeify_api.services.discovery import DiscoveryService
+from vibeify_api.schemas.discovery import DiscoveryJobResponse, DiscoveryRequest, ProviderDiscoveryRequest, ProductRecord
+from vibeify_api.services.discovery import DiscoveryService, ProviderDiscoveryResponse
 from vibeify_api.tasks.orchestrators.discovery import orchestrate_discovery
 
 router = APIRouter(prefix="/discovery", tags=["Discovery"])
@@ -47,15 +45,20 @@ async def start_discovery(
     status_code=status.HTTP_200_OK,
     summary="Search offers via external providers and return normalized results.",
 )
-async def offer_discovery(requests: List[ProviderDiscoveryRequest]) -> ProviderDiscoveryResponse:
+async def offer_discovery(
+    requests: List[ProviderDiscoveryRequest],
+) -> ProviderDiscoveryResponse[ProductRecord]:
     _service = DiscoveryService()
-    return await _service.discover(requests)
+    return await _service.discover_offers(requests)
+
 
 @router.post(
     "/offers/enrichment",
     status_code=status.HTTP_200_OK,
     summary="Retrieve specific normalized details from providers.",
 )
-async def search(requests: List[ProviderDiscoveryRequest]) -> ProviderDiscoveryResponse:
+async def search(
+    requests: List[ProviderDiscoveryRequest],
+) -> ProviderDiscoveryResponse[ProductRecord]:
     _service = DiscoveryService()
-    return await _service.discover(requests)
+    return await _service.discover_offers(requests)

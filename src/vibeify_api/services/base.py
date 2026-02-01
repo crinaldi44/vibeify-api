@@ -15,11 +15,9 @@ from vibeify_api.core.exceptions import NotFoundError
 from vibeify_api.core.logging import get_logger
 from vibeify_api.models.user import User
 from vibeify_api.repository.base import BaseRepository
-from vibeify_api.schemas.discovery import ProviderDiscoveryError, ProviderDiscoveryRequest
-from vibeify_api.schemas.responses import ProviderDiscoveryResult
+from vibeify_api.schemas.discovery import ProviderDiscoveryError, ProviderDiscoveryResult
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
-
 
 class BaseService(Generic[ModelType]):
     """Generic base service for business logic operations.
